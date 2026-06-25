@@ -74,7 +74,7 @@ export default function ApiKeysSpace() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Clés API</h2>
           <p className="mt-1 text-sm text-zinc-400">
-            Gérez vos clés d'API pour l'accès programmatique à PulseForge.
+            Gérez vos clés d'API pour l'accès programmatique à Autocontent.
           </p>
         </div>
         <button

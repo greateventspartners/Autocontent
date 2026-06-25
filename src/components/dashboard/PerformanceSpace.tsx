@@ -109,7 +109,7 @@ export default function PerformanceSpace() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Analytics & Optimisations IA</h2>
           <p className="mt-1 text-sm text-zinc-400">
-            Suivez les performances de diffusion de votre marque et appliquez les recommandations de la boucle d&apos;apprentissage PulseForge.
+            Suivez les performances de diffusion de votre marque et appliquez les recommandations de la boucle d&apos;apprentissage Autocontent.
           </p>
         </div>
         <div className="flex items-center gap-3">

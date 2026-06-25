@@ -63,11 +63,11 @@ export default function SignUpPage() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
           <div className="text-2xl font-bold text-white tracking-tight">
-            <span className="text-primary">✦</span> PulseForge
+            <span className="text-primary">✦</span> Autocontent
           </div>
           <h1 className="text-xl font-bold text-white">Inscription</h1>
           <p className="text-sm text-muted-foreground">
-            Créez votre compte PulseForge
+            Créez votre compte Autocontent
           </p>
         </div>
 

@@ -53,11 +53,11 @@ export default function SignInPage() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
           <div className="text-2xl font-bold text-white tracking-tight">
-            <span className="text-primary">✦</span> PulseForge
+            <span className="text-primary">✦</span> Autocontent
           </div>
           <h1 className="text-xl font-bold text-white">Connexion</h1>
           <p className="text-sm text-muted-foreground">
-            Connectez-vous à votre compte PulseForge
+            Connectez-vous à votre compte Autocontent
           </p>
         </div>
 

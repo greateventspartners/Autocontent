@@ -105,7 +105,7 @@ function PreviewLinkedIn({ title, content }: { title: string; content: string })
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
           <Avatar accent={t.accent} />
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>PulseForge</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Autocontent</div>
             <div style={{ fontSize: 11, color: t.muted }}>1h • &#x1f310;</div>
           </div>
         </div>
@@ -202,7 +202,7 @@ function PreviewX({ title, content }: { title: string; content: string }) {
         <Avatar accent={t.accent} />
         <div>
           <div style={{ display: "flex", gap: 4, fontSize: 13 }}>
-            <span style={{ fontWeight: 700, color: t.text }}>PulseForge</span>
+            <span style={{ fontWeight: 700, color: t.text }}>Autocontent</span>
             <span style={{ color: t.muted }}>@pulseforge · 1h</span>
           </div>
           <p
@@ -248,7 +248,7 @@ function PreviewFacebook({ title, content }: { title: string; content: string })
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 12 }}>
           <Avatar accent={t.accent} />
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>PulseForge</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Autocontent</div>
             <div style={{ fontSize: 11, color: t.muted }}>Hier à 14:00</div>
           </div>
         </div>
@@ -332,7 +332,7 @@ function PreviewPinterest({ title, content }: { title: string; content: string }
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, borderTop: `1px solid #efefef`, paddingTop: 10 }}>
           <div style={{ width: 20, height: 20, borderRadius: "50%", background: t.accent }} />
-          <span style={{ fontSize: 11, fontWeight: 600, color: t.text }}>PulseForge</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: t.text }}>Autocontent</span>
         </div>
       </div>
     </div>
@@ -353,7 +353,7 @@ function PreviewWordPress({ title, content }: { title: string; content: string }
             <span style={{ fontSize: 10, background: "#f0f0f1", color: t.muted, padding: "2px 8px", borderRadius: 4 }}>Automatisation</span>
           </div>
           <h1 style={{ fontSize: 18, fontWeight: 700, color: t.text, margin: 0, lineHeight: 1.3 }}>{title}</h1>
-          <p style={{ fontSize: 12, color: t.muted, margin: "6px 0 10px" }}>Publié le {new Date().toLocaleDateString("fr-FR")} par PulseForge</p>
+          <p style={{ fontSize: 12, color: t.muted, margin: "6px 0 10px" }}>Publié le {new Date().toLocaleDateString("fr-FR")} par Autocontent</p>
           <p style={{ fontSize: 13, color: t.text, lineHeight: 1.5, margin: 0, whiteSpace: "pre-wrap" }}>
             {shortenText(content, 400)}
           </p>

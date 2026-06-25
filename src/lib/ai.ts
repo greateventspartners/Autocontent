@@ -323,6 +323,60 @@ export async function repurposeContent(
   return results;
 }
 
+const CAROUSEL_CHANNEL_PROMPTS: Record<string, string> = {
+  LINKEDIN:
+    "Style LinkedIn : professionnel et thought-leadership. Chaque slide doit apporter une valeur éducative. Termine par un slide CTA invitant à l'action ou au commentaire.",
+  INSTAGRAM:
+    "Style Instagram : visuel, inspirant et esthétique. Chaque slide doit être concis et percutant. Termine par un slide CTA. Ajoute des emojis et un ton plus décontracté.",
+};
+
+export async function generateCarousel(
+  brandKitId: string,
+  topic: string,
+  channel: string,
+  slideCount: number,
+): Promise<{ title: string; slides: { title: string; content: string; imagePrompt: string }[] } | null> {
+  const brandKit = await loadBrandKit(brandKitId);
+  if (!brandKit) throw new Error("Brand kit not found");
+
+  const brandCtx = buildBrandContext(brandKit);
+  const channelPrompt = CAROUSEL_CHANNEL_PROMPTS[channel] || CAROUSEL_CHANNEL_PROMPTS.LINKEDIN;
+
+  const formatPrompt = [
+    `Slide 1 (Accroche) : titre fort qui capte l'attention, sous-titre ou introduction courte.`,
+    `Slides 2-${slideCount - 1} (Corps) : chaque slide développe un point clé avec un titre et un contenu de 1-3 phrases.`,
+    `Slide ${slideCount} (CTA) : conclusion avec appel à l'action clair.`,
+  ].join("\n");
+
+  const systemPrompt = [
+    `Tu es un designer de carrousels marketing expert pour "${brandKit.name}".`,
+    brandCtx,
+    `\nCanal: ${channel}.`,
+    `\n${channelPrompt}`,
+    `\nGénère un carrousel de ${slideCount} slides pour le sujet "${topic}".`,
+    `\nStructure du carrousel:\n${formatPrompt}`,
+    `\nPour chaque slide, génère aussi une imagePrompt (description visuelle pour générer une image d'illustration).`,
+    `Retourne UNIQUEMENT un JSON valide avec la structure:`,
+    `{ "title": "Titre du carrousel", "slides": [{ "title": "...", "content": "...", "imagePrompt": "..." }] }`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const geminiResult = await generateWithGemini<{
+    title: string;
+    slides: { title: string; content: string; imagePrompt: string }[];
+  }>(systemPrompt, `Sujet: ${topic || "marketing digital"}`);
+
+  if (geminiResult?.slides?.length) {
+    return {
+      title: geminiResult.title || `Carrousel: ${topic}`,
+      slides: geminiResult.slides.slice(0, slideCount),
+    };
+  }
+
+  return null;
+}
+
 export async function generateImage(
   brandKitId: string,
   prompt: string,

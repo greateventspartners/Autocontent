@@ -4,7 +4,7 @@ import { handleApiError } from "@/lib/errors";
 
 const MOCK_EXTRACTIONS: Record<string, Partial<{ name: string; slogan: string; description: string; tone: string[]; voiceRules: string[]; colors: any }>> = {
   "pulseforge.ai": {
-    name: "PulseForge",
+    name: "Autocontent",
     slogan: "Your brand. Autopiloted.",
     description:
       "Plateforme SaaS d'automatisation marketing IA qui gère vos contenus de A à Z en respectant fidèlement votre voix de marque.",

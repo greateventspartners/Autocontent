@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useUser } from "@/components/providers";
 import { useRouter } from "next/navigation";
 import {
-  Palette, Sparkles, BarChart3, Key, FileText, Calendar,
+  Palette, Sparkles, BarChart3, Key, FileText, Calendar, Plug, Layers,
 } from "lucide-react";
 import BrandSpace from "@/components/dashboard/BrandSpace";
 import ContentSpace from "@/components/dashboard/ContentSpace";
@@ -12,6 +12,9 @@ import PerformanceSpace from "@/components/dashboard/PerformanceSpace";
 import ApiKeysSpace from "@/components/dashboard/ApiKeysSpace";
 import TemplatesSpace from "@/components/dashboard/TemplatesSpace";
 import TopicsSpace from "@/components/dashboard/TopicsSpace";
+import IntegrationsSpace from "@/components/dashboard/IntegrationsSpace";
+import CarouselSpace from "@/components/dashboard/CarouselSpace";
+import OnboardingSpace, { isOnboardingDone } from "@/components/dashboard/OnboardingSpace";
 import { BrandKit, ContentItem, PublicationLog } from "@/lib/services/pulseforge-service";
 
 const EMPTY_BRAND: BrandKit = {
@@ -25,12 +28,14 @@ const EMPTY_BRAND: BrandKit = {
   personas: [],
 };
 
-type ActiveSpace = "brand" | "content" | "performance" | "apiKeys" | "templates" | "topics";
+type ActiveSpace = "brand" | "content" | "performance" | "integrations" | "carousel" | "apiKeys" | "templates" | "topics";
 
 const NAV_ITEMS = [
   { id: "brand" as const, label: "Brand", icon: Palette, description: "Identité, tons et personas" },
   { id: "content" as const, label: "Content", icon: Sparkles, description: "Génération, édition et calendrier" },
   { id: "performance" as const, label: "Stats", icon: BarChart3, description: "Performances et recommandations IA" },
+  { id: "integrations" as const, label: "Connexions", icon: Plug, description: "Comptes réseaux et API" },
+  { id: "carousel" as const, label: "Carrousels", icon: Layers, description: "Génération de carrousels multi-slides" },
   { id: "apiKeys" as const, label: "API", icon: Key, description: "Accès programmatique" },
   { id: "templates" as const, label: "Modèles", icon: FileText, description: "Prompts réutilisables" },
   { id: "topics" as const, label: "Sujets", icon: Calendar, description: "Sujets proposés par l'IA" },
@@ -50,6 +55,11 @@ export default function DashboardPage() {
   const [brand, setBrand] = useState<BrandKit>(EMPTY_BRAND);
   const [contentList, setContentList] = useState<ContentItem[]>([]);
   const [publicationLogs, setPublicationLogs] = useState<PublicationLog[]>([]);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (!isOnboardingDone() && user) setShowOnboarding(true);
+  }, [user]);
 
   const handleAddPublishingLog = (log: { title: string; channel: string; status: "success" | "failed" }) => {
     const newLog: PublicationLog = {
@@ -69,7 +79,7 @@ export default function DashboardPage() {
       <nav className="hidden lg:flex lg:w-72 flex-col border-r border-border bg-card/50 backdrop-blur-sm">
         <div className="p-6 border-b border-border">
           <h1 className="text-xl font-bold text-white tracking-tight">
-            <span className="text-primary">✦</span> PulseForge
+            <span className="text-primary">✦</span> Autocontent
           </h1>
           <p className="mt-1 text-xs text-muted-foreground">
             {user?.email ?? "Chargement..."}
@@ -119,6 +129,8 @@ export default function DashboardPage() {
           />
         )}
         {activeSpace === "performance" && <PerformanceSpace />}
+        {activeSpace === "integrations" && <IntegrationsSpace />}
+        {activeSpace === "carousel" && <CarouselSpace />}
         {activeSpace === "apiKeys" && <ApiKeysSpace />}
         {activeSpace === "templates" && <TemplatesSpace />}
         {activeSpace === "topics" && <TopicsSpace brandKitId={brand.id ?? ""} />}
@@ -151,6 +163,8 @@ export default function DashboardPage() {
           })}
         </div>
       </nav>
+
+      {showOnboarding && <OnboardingSpace />}
     </div>
   );
 }

@@ -14,10 +14,10 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "PulseForge — Your brand. Autopiloted.",
+  title: "Autocontent — Your brand. Autopiloted.",
   description: "Plateforme SaaS d'automatisation marketing IA qui planifie, rédige, conçoit, programme, publie et optimise des contenus multicanaux à partir de votre voix de marque.",
   keywords: ["marketing", "ia", "automatisation", "contenu", "blog", "reseaux sociaux", "calendrier editorial"],
-  authors: [{ name: "PulseForge Team" }],
+  authors: [{ name: "Autocontent Team" }],
 };
 
 export default function RootLayout({

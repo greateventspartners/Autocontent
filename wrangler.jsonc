@@ -14,12 +14,12 @@
     "enabled": true
   },
   "vars": {
-    "NEXT_PUBLIC_SUPABASE_URL": "https://muxpcsoxyewfkgnsclyz.supabase.co",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11eHBjc294eWV3ZmtnbnNjbHl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0ODI4MDEsImV4cCI6MjA5NjA1ODgwMX0.hVYliDwgA5PfDclOtbrN9DlsSy1xr_FRnOapUpK1gE4",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://<project>.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "<anon-key>",
     "NEXT_PUBLIC_APP_URL": "https://autocontent.greateventspartners.workers.dev",
     "S3_REGION": "auto",
     "S3_BUCKET": "autocontent",
-    "S3_ENDPOINT": "https://9fcc4a4da7367f2575b41d7173146120.r2.cloudflarestorage.com"
+    "S3_ENDPOINT": "https://<account>.r2.cloudflarestorage.com"
   },
   "r2_buckets": [
     {

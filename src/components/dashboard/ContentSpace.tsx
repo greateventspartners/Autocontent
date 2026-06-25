@@ -2,20 +2,19 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Calendar as CalendarIcon,
   Sparkles,
   FileText,
   Globe,
   Mail,
   Megaphone,
-  Clock,
-  Check,
   Play,
   Share2,
   Trash2,
   AlertCircle,
   RefreshCw,
   Save,
+  Clock,
+  Check,
 } from "lucide-react";
 import { PlatformIcon, getChannelLabel } from "@/components/PlatformIcon";
 import PostPreview from "@/components/PostPreview";
@@ -25,12 +24,13 @@ import {
   Campaign,
   contentApi,
   campaignApi,
-  analyticsApi,
-  BestTimeSuggestion,
   reviewApi,
   flattenContentItem,
   expandContentItem,
 } from "@/lib/services/pulseforge-service";
+import CalendarView from "./calendar/CalendarView";
+import SplitScreenEditor from "./SplitScreenEditor";
+import type { CalendarContentItem } from "./calendar/types";
 
 interface ContentSpaceProps {
   brand: BrandKit;
@@ -75,8 +75,8 @@ export default function ContentSpace({
   const [activeVariant, setActiveVariant] = useState<"a" | "b">("a");
   const titleRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLTextAreaElement>(null);
+  const [showSplitEditor, setShowSplitEditor] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [calendarView, setCalendarView] = useState<"grid" | "list">("grid");
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saving" | "saved" | "error"
@@ -88,9 +88,6 @@ export default function ContentSpace({
   const [showCampaignForm, setShowCampaignForm] = useState(false);
   const [newCampaignName, setNewCampaignName] = useState("");
   const [campaignColor, setCampaignColor] = useState("#8b5cf6");
-  const [dragItemId, setDragItemId] = useState<string | null>(null);
-  const [bestTimeSuggestions, setBestTimeSuggestions] = useState<Record<string, BestTimeSuggestion[]> | null>(null);
-  const [bestTimeLoading, setBestTimeLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewUrl, setReviewUrl] = useState<string | null>(null);
@@ -166,18 +163,6 @@ export default function ContentSpace({
     }
   };
 
-  const loadBestTime = async () => {
-    try {
-      setBestTimeLoading(true);
-      const res = await analyticsApi.bestTime();
-      setBestTimeSuggestions(res.suggestions);
-    } catch {
-      setBestTimeSuggestions(null);
-    } finally {
-      setBestTimeLoading(false);
-    }
-  };
-
   const handleCreateCampaign = async () => {
     if (!newCampaignName.trim()) return;
     try {
@@ -203,15 +188,11 @@ export default function ContentSpace({
     }
   };
 
-  const handleDropOnDay = async (
-    itemId: string,
-    date: Date,
-    campaignId?: string | null
-  ) => {
+  const handleReschedule = async (itemId: string, date: Date) => {
     try {
       await contentApi.reschedule(itemId, {
         scheduledDate: date.toISOString(),
-        campaignId: campaignId ?? undefined,
+        campaignId: selectedCampaignId ?? undefined,
       });
       const res = await contentApi.list();
       const items = (res.items ?? []).map(flattenContentItem);
@@ -219,7 +200,6 @@ export default function ContentSpace({
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Erreur");
     }
-    setDragItemId(null);
   };
 
   const filteredContent = selectedCampaignId
@@ -405,13 +385,28 @@ export default function ContentSpace({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-            Espace Content
+            {showSplitEditor ? "Éditeur Split-Screen" : "Espace Content"}
           </h2>
           <p className="mt-1 text-sm text-zinc-400">
-            Générez des contenus multicanaux calibrés, éditez-les et planifiez
-            votre calendrier de publication.
+            {showSplitEditor
+              ? "Créez et révisez vos contenus multi-canal en simultané."
+              : "Générez des contenus multicanaux calibrés, éditez-les et planifiez votre calendrier de publication."
+            }
           </p>
         </div>
+        {!showSplitEditor && (
+          <button
+            type="button"
+            onClick={() => setShowSplitEditor(true)}
+            className="flex items-center gap-2 bg-primary hover:bg-opacity-90 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer shrink-0"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="7" height="18" rx="1" />
+              <rect x="14" y="3" width="7" height="18" rx="1" />
+            </svg>
+            Éditeur Split-Screen
+          </button>
+        )}
       </div>
 
       {loadError && (
@@ -421,7 +416,16 @@ export default function ContentSpace({
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      {showSplitEditor ? (
+        <SplitScreenEditor
+          brand={brand}
+          contentList={contentList}
+          onSetContentList={onSetContentList}
+          onAddPublishingLog={onAddPublishingLog}
+          onClose={() => setShowSplitEditor(false)}
+        />
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         {/* Left: Generator & List */}
         <div className="xl:col-span-1 space-y-8">
           <div className="glass-panel p-6 rounded-2xl relative overflow-hidden">
@@ -1077,232 +1081,28 @@ export default function ContentSpace({
               </div>
             </div>
           ) : (
-            <div className="glass-panel p-6 rounded-2xl space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5 text-primary" /> Calendrier
-                  Éditorial
-                </h3>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={loadBestTime}
-                    disabled={bestTimeLoading}
-                    className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-white transition px-2 py-1 rounded-lg border border-zinc-800/60 hover:border-zinc-700 disabled:opacity-50 cursor-pointer"
-                  >
-                    {bestTimeLoading ? (
-                      <RefreshCw className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Clock className="h-3 w-3" />
-                    )}
-                    Meilleur moment
-                  </button>
-                  {bestTimeSuggestions && (
-                    <div className="relative group">
-                      <button
-                        type="button"
-                        className="text-xs text-primary hover:text-opacity-80 px-2 py-1 rounded-lg border border-primary/30 cursor-pointer"
-                      >
-                        {Object.keys(bestTimeSuggestions).length - 1} canaux
-                      </button>
-                      <div className="absolute right-0 top-full mt-2 w-64 bg-zinc-900 border border-zinc-800 rounded-xl p-4 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition pointer-events-auto z-20">
-                        <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-3">
-                          Meilleurs moments
-                        </p>
-                        <div className="space-y-3">
-                          {Object.entries(bestTimeSuggestions).map(
-                            ([ch, days]) =>
-                              ch !== "all" && (
-                                <div key={ch}>
-                                  <p className="text-xs font-semibold text-white uppercase mb-1">
-                                    {getChannelLabel(ch)}
-                                  </p>
-                                  <div className="space-y-0.5">
-                                    {days.slice(0, 3).map((d) => (
-                                      <p
-                                        key={d.dayOfWeek}
-                                        className="text-[11px] text-zinc-400"
-                                      >
-                                        {d.dayOfWeek} —{" "}
-                                        {d.hour.toString().padStart(2, "0")}:
-                                        00
-                                      </p>
-                                    ))}
-                                  </div>
-                                </div>
-                              )
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex bg-zinc-950 p-1 rounded-lg border border-zinc-800">
-                  <button
-                    type="button"
-                    onClick={() => setCalendarView("grid")}
-                    className={`px-3 py-1 text-xs font-semibold rounded-md transition ${
-                      calendarView === "grid"
-                        ? "bg-zinc-900 text-white"
-                        : "text-zinc-500 hover:text-white"
-                    }`}
-                  >
-                    Grille
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCalendarView("list")}
-                    className={`px-3 py-1 text-xs font-semibold rounded-md transition ${
-                      calendarView === "list"
-                        ? "bg-zinc-900 text-white"
-                        : "text-zinc-500 hover:text-white"
-                    }`}
-                  >
-                    Liste
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {calendarView === "grid" ? (
-                <div className="space-y-4">
-                  <div className="overflow-x-auto -mx-2 sm:mx-0">
-                    <div className="min-w-[700px] space-y-4 px-2 sm:px-0">
-                  <div className="flex items-center justify-between">
-                    <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center text-[10px] sm:text-xs font-semibold text-zinc-400 flex-1">
-                      {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map(
-                        (d) => (
-                          <div key={d}>{d}</div>
-                        )
-                      )}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-7 gap-1 sm:gap-2 auto-rows-[70px] sm:auto-rows-[110px]">
-                    {Array.from({ length: 14 }).map((_, idx) => {
-                      const date = new Date();
-                      date.setDate(date.getDate() - 2 + idx + 1);
-                      const dayItems = filteredContent.filter((item) => {
-                        const d = new Date(item.scheduledDate);
-                        return (
-                          d.getDate() === date.getDate() &&
-                          d.getMonth() === date.getMonth()
-                        );
-                      });
-                      return (
-                        <div
-                          key={idx}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={() => {
-                            if (dragItemId)
-                              handleDropOnDay(dragItemId, date);
-                          }}
-                          className="bg-zinc-950/20 border border-zinc-900 rounded-lg p-2 flex flex-col justify-between hover:border-zinc-800 transition"
-                        >
-                          <div className="flex justify-between items-center text-[10px] text-zinc-500 font-mono">
-                            <span>{date.getDate()}</span>
-                            {dayItems.length > 0 && (
-                              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                            )}
-                          </div>
-                          <div className="space-y-1 overflow-y-auto max-h-[70px]">
-                            {dayItems.map((item) => (
-                              <button
-                                key={item.id}
-                                type="button"
-                                draggable
-                                onDragStart={() => setDragItemId(item.id)}
-                                onClick={() => setSelectedItem(item)}
-                                className={`w-full text-left text-[9px] truncate p-1 rounded border leading-tight ${getStatusColor(
-                                  item.status
-                                )}`}
-                              >
-                                {item.title}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredContent.length === 0 ? (
-                    <div className="text-center py-12 text-zinc-500 text-xs">
-                      Aucun contenu. Utilisez l&apos;assistant pour générer vos
-                      publications.
-                    </div>
-                  ) : (
-                    [...filteredContent]
-                      .sort(
-                        (a, b) =>
-                          new Date(a.scheduledDate).getTime() -
-                          new Date(b.scheduledDate).getTime()
-                      )
-                      .map((item) => (
-                        <div
-                          key={item.id}
-                          className="bg-zinc-950/30 border border-zinc-900/80 rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 hover:border-zinc-800 transition"
-                        >
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="bg-zinc-900 border border-zinc-800 p-2 rounded-lg text-zinc-400 shrink-0">
-                              {getChannelIcon(item.channel)}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h4 className="text-sm font-semibold text-white truncate">
-                                {item.title}
-                              </h4>
-                              <p className="text-xs text-zinc-400 truncate mt-0.5">
-                                {item.summary}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-                            <div className="text-left sm:text-right min-w-0">
-                              <div className="text-[11px] sm:text-xs text-white font-semibold whitespace-nowrap">
-                                {new Date(item.scheduledDate).toLocaleDateString(
-                                  "fr-FR",
-                                  {
-                                    day: "2-digit",
-                                    month: "2-digit",
-                                  }
-                                )}
-                              </div>
-                              <div className="text-[10px] text-zinc-500 font-mono whitespace-nowrap">
-                                {new Date(item.scheduledDate).toLocaleTimeString(
-                                  "fr-FR",
-                                  {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  }
-                                )}
-                              </div>
-                            </div>
-                            <span
-                              className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border shrink-0 ${getStatusColor(
-                                item.status
-                              )}`}
-                            >
-                              {item.status}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedItem(item)}
-                              className="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg text-white font-medium cursor-pointer shrink-0"
-                            >
-                              Éditer
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                  )}
-                </div>
-              )}
-            </div>
+            <CalendarView
+              items={filteredContent.map((item) => ({
+                id: item.id,
+                title: item.title,
+                channel: item.channel,
+                status: item.status,
+                campaignId: null,
+                campaignColor: null,
+                scheduledDate: item.scheduledDate,
+                summary: item.summary,
+              }))}
+              campaigns={campaigns}
+              onReschedule={handleReschedule}
+              onItemClick={(item) => {
+                const found = contentList.find((c) => c.id === item.id)
+                if (found) setSelectedItem(found)
+              }}
+            />
           )}
         </div>
       </div>
+    )}
     </div>
   );
 }
