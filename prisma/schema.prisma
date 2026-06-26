@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspaces WorkspaceMember[]
+  comments   Comment[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members   WorkspaceMember[]
+  brandKits BrandKit[]
+  campaigns Campaign[]
+}
+
+enum WorkspaceRole {
+  OWNER
+  EDITOR
+  CLIENT
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  userId      String
+  workspaceId String
+  role        WorkspaceRole @default(EDITOR)
+  createdAt   DateTime      @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@unique([userId, workspaceId])
+}
+
+model BrandKit {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  logoUrl     String?
+  colors      Json?    // Tableau des codes HEX
+  fonts       Json?    // Objet des typographies
+  toneOfVoice String?  @db.Text
+  doAndDonts  String?  @db.Text // Règles éditoriales (Interdits)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+}
+
+model Campaign {
+  id          String   @id @default(cuid())
+  workspaceId String
+  title       String
+  description String?  @db.Text
+  colorCode   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  contents  Content[]
+}
+
+model Content {
+  id            String   @id @default(cuid())
+  campaignId    String
+  sourceIdea    String   @db.Text // Prompt original ou texte source
+  status        Status   @default(DRAFT)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+  posts    Post[]
+}
+
+enum Status {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  FAILED
+}
+
+model Post {
+  id             String   @id @default(cuid())
+  contentId      String
+  platform       Platform
+  body           String   @db.Text
+  mediaUrls      Json?    // URLs des images/vidéos
+  firstComment   String?  @db.Text
+  scheduledAt    DateTime?
+  publishedAt    DateTime?
+  platformPostId String?  // ID de l'API cible (ex: LinkedIn)
+  status         Status   @default(DRAFT)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  content  Content   @relation(fields: [contentId], references: [id])
+  comments Comment[]
+}
+
+enum Platform {
+  LINKEDIN
+  TWITTER
+  INSTAGRAM
+  FACEBOOK
+  TIKTOK
+  PINTEREST
+  WORDPRESS
+  MEDIUM
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+}
