@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, ArrowRight, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
@@ -10,14 +10,33 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     setIsLoading(true);
-    setTimeout(() => {
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data: { error?: string } = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Erreur de connexion");
+        return;
+      }
+
+      window.location.href = "/dashboard";
+    } catch {
+      setError("Erreur réseau. Veuillez réessayer.");
+    } finally {
       setIsLoading(false);
-      window.location.href = "/brand-kit";
-    }, 2000);
+    }
   };
 
   return (
@@ -51,7 +70,7 @@ export default function LoginPage() {
             </Link>
             <h1 className="text-4xl font-bold tracking-tight mb-4">Autopilot</h1>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              Créez, planifiez et publiez votre contenu sur tous vos réseaux sociaux grâce à l'IA.
+              Créez, planifiez et publiez votre contenu sur tous vos réseaux sociaux grace à l&apos;IA.
             </p>
           </motion.div>
 
@@ -160,6 +179,13 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+
+            {error && (
+              <div className="flex items-center gap-2 p-3 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl">
+                <AlertCircle size={16} className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
 
             <button
               type="submit"

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, Bot, CalendarDays, Palette, CheckCircle, Settings, Plus } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { useUser } from "@/lib/useUser";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -21,6 +22,11 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { user } = useUser();
+
+  const initials = user?.name
+    ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+    : user?.email[0].toUpperCase() || "?";
 
   return (
     <div className="w-64 h-screen flex flex-col glass border-r border-white/10 dark:border-white/10 relative z-10 hidden md:flex flex-shrink-0">
@@ -34,7 +40,7 @@ export default function Sidebar() {
         
         <button className="w-full mb-8 flex items-center justify-center gap-2 bg-foreground text-background hover:bg-foreground/90 transition-all font-medium py-2.5 px-4 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
           <Plus size={18} />
-          Créer avec l'IA
+          Créer avec l&apos;IA
         </button>
       </div>
 
@@ -73,10 +79,10 @@ export default function Sidebar() {
         <div className="mt-4 p-4 rounded-xl glass-card border border-white/5">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold shadow-md">
-              JD
+              {initials}
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">John Doe</p>
+              <p className="text-sm font-medium text-foreground">{user?.name || user?.email || "Utilisateur"}</p>
               <p className="text-xs text-muted-foreground">Admin Workspace</p>
             </div>
           </div>

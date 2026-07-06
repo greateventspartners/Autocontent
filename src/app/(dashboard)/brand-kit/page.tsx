@@ -1,20 +1,132 @@
 "use client";
 
-import React, { useState } from "react";
-import { Palette, Search, Upload, Plus, Check, Wand2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Palette, Search, Upload, Plus, Check, Wand2, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
+type Color = { hex: string; name: string };
+
+type BrandKitData = {
+  id: string;
+  name: string;
+  colors: Color[];
+  fonts: { keywords?: string } | null;
+  toneOfVoice: string | null;
+  doAndDonts: string | null;
+};
+
+type BrandKitResponse = {
+  brandKits?: BrandKitData[];
+  brandKit?: BrandKitData;
+  error?: string;
+};
+
+const DEFAULT_COLORS: Color[] = [
+  { hex: "#4f46e5", name: "Primaire" },
+  { hex: "#0f172a", name: "Sombre" },
+  { hex: "#f8fafc", name: "Clair" },
+  { hex: "#ef4444", name: "Accent" },
+];
+
+const TONE_OPTIONS = [
+  "Corporate & Expert",
+  "Friendly & Accessible",
+  "Humoristique",
+  "Technique & Précis",
+];
+
 export default function BrandKitPage() {
+  const [brandKit, setBrandKit] = useState<BrandKitData | null>(null);
+  const [colors, setColors] = useState<Color[]>(DEFAULT_COLORS);
+  const [selectedTone, setSelectedTone] = useState("");
+  const [instructions, setInstructions] = useState("");
+  const [keywords, setKeywords] = useState("");
   const [url, setUrl] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/brand-kit")
+      .then((res) => res.json() as Promise<BrandKitResponse>)
+      .then((data) => {
+        if (data.brandKits && data.brandKits.length > 0) {
+          const bk = data.brandKits[0];
+          setBrandKit(bk);
+          if (bk.colors) setColors(bk.colors as Color[]);
+          if (bk.toneOfVoice) setSelectedTone(bk.toneOfVoice as string);
+          if (bk.doAndDonts) setInstructions(bk.doAndDonts as string);
+          if (bk.fonts) {
+            const parsed = bk.fonts as { keywords?: string };
+            if (parsed.keywords) setKeywords(parsed.keywords);
+          }
+        } else {
+          setSelectedTone(TONE_OPTIONS[1]);
+          setInstructions("Nous tutoyons toujours notre audience. Nous utilisons des emojis de manière modérée (max 2 par post). Nous ne parlons jamais de politique ou de nos concurrents directs.");
+          setKeywords("SaaS, Innovation, Gain de temps, Autopilot");
+        }
+      })
+      .catch(() => setError("Impossible de charger le Brand Kit"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
+    setSaved(false);
+
+    const payload = {
+      name: "Brand Kit",
+      colors,
+      toneOfVoice: selectedTone,
+      doAndDonts: instructions,
+      fonts: { keywords },
+    };
+
+    try {
+      const url_ = brandKit ? `/api/brand-kit/${brandKit.id}` : "/api/brand-kit";
+      const method = brandKit ? "PUT" : "POST";
+
+      const res = await fetch(url_, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json() as BrandKitResponse;
+      if (!res.ok) throw new Error(data.error || "Erreur de sauvegarde");
+
+      if (!brandKit && data.brandKit) setBrandKit(data.brandKit);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur lors de la sauvegarde");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const simulateAnalysis = () => {
     if (!url) return;
     setIsAnalyzing(true);
-    setTimeout(() => {
-      setIsAnalyzing(false);
-    }, 2000);
+    setTimeout(() => setIsAnalyzing(false), 2000);
   };
+
+  const updateColor = (index: number, field: "hex" | "name", value: string) => {
+    setColors((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)));
+  };
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+          className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-12">
@@ -24,14 +136,31 @@ export default function BrandKitPage() {
             <Palette className="text-primary" size={28} />
             Brand Kit & Identité
           </h2>
-          <p className="text-muted-foreground mt-1">Gérez l'identité visuelle et le ton de voix de votre marque pour l'IA.</p>
+          <p className="text-muted-foreground mt-1">Gérez l&apos;identité visuelle et le ton de voix de votre marque pour l&apos;IA.</p>
         </div>
-        <button className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/25 font-medium text-sm flex items-center gap-2 transition-transform active:scale-95">
-          <Check size={16} /> Enregistrer
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/25 font-medium text-sm flex items-center gap-2 transition-transform active:scale-95 disabled:opacity-70"
+        >
+          {saving ? (
+            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+              className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full"
+            />
+          ) : (
+            <Check size={16} />
+          )}
+          {saved ? "Enregistré !" : saving ? "Sauvegarde..." : "Enregistrer"}
         </button>
       </div>
 
-      {/* Auto Ingestion Tool */}
+      {error && (
+        <div className="flex items-center gap-2 p-3 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl">
+          <AlertCircle size={16} className="shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
       <div className="glass-card rounded-2xl p-6 relative overflow-hidden group">
         <div className="absolute -right-12 -top-12 w-40 h-40 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-colors duration-500"></div>
         <div className="relative z-10">
@@ -39,19 +168,19 @@ export default function BrandKitPage() {
             <Wand2 className="text-primary" size={18} />
             Import Magique depuis un site web
           </h3>
-          <p className="text-sm text-muted-foreground mb-4">Entrez l'URL de votre site web pour que notre IA extraie automatiquement vos couleurs, polices et votre style éditorial.</p>
+          <p className="text-sm text-muted-foreground mb-4">Entrez l&apos;URL de votre site web pour que notre IA extraie automatiquement vos couleurs, polices et votre style éditorial.</p>
           <div className="flex gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-              <input 
-                type="url" 
+              <input
+                type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://votre-site.com" 
+                placeholder="https://votre-site.com"
                 className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-muted-foreground/70"
               />
             </div>
-            <button 
+            <button
               onClick={simulateAnalysis}
               disabled={!url || isAnalyzing}
               className="px-6 py-2.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl font-medium text-sm transition-all disabled:opacity-50 flex items-center justify-center min-w-[140px]"
@@ -69,7 +198,6 @@ export default function BrandKitPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Visual Identity */}
         <div className="space-y-6">
           <div className="glass-card rounded-2xl p-6">
             <h3 className="text-lg font-bold mb-4">Logo & Icônes</h3>
@@ -88,36 +216,53 @@ export default function BrandKitPage() {
           <div className="glass-card rounded-2xl p-6">
             <h3 className="text-lg font-bold mb-4 flex justify-between items-center">
               Couleurs (HEX)
-              <button className="text-primary hover:bg-primary/10 p-1.5 rounded-lg transition-colors"><Plus size={16}/></button>
+              <button
+                onClick={() => setColors((prev) => [...prev, { hex: "#000000", name: `Couleur ${prev.length + 1}` }])}
+                className="text-primary hover:bg-primary/10 p-1.5 rounded-lg transition-colors"
+              >
+                <Plus size={16} />
+              </button>
             </h3>
             <div className="grid grid-cols-4 gap-4">
-              {[
-                { hex: "#4f46e5", name: "Primaire" },
-                { hex: "#0f172a", name: "Sombre" },
-                { hex: "#f8fafc", name: "Clair" },
-                { hex: "#ef4444", name: "Accent" }
-              ].map((color, i) => (
+              {colors.map((color, i) => (
                 <div key={i} className="flex flex-col items-center gap-2 group cursor-pointer">
-                  <div className="w-12 h-12 rounded-full shadow-lg shadow-black/20 ring-2 ring-white/10 group-hover:scale-110 transition-transform" style={{ backgroundColor: color.hex }}></div>
-                  <div className="text-center">
-                    <p className="text-xs font-medium">{color.name}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase">{color.hex}</p>
-                  </div>
+                  <label className="relative cursor-pointer">
+                    <div className="w-12 h-12 rounded-full shadow-lg shadow-black/20 ring-2 ring-white/10 group-hover:scale-110 transition-transform" style={{ backgroundColor: color.hex }}></div>
+                    <input
+                      type="color"
+                      value={color.hex}
+                      onChange={(e) => updateColor(i, "hex", e.target.value)}
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                    />
+                  </label>
+                  <input
+                    value={color.name}
+                    onChange={(e) => updateColor(i, "name", e.target.value)}
+                    className="text-xs font-medium text-center bg-transparent border-none outline-none w-full"
+                  />
+                  <p className="text-[10px] text-muted-foreground uppercase">{color.hex}</p>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Tone of Voice */}
         <div className="space-y-6">
           <div className="glass-card rounded-2xl p-6">
             <h3 className="text-lg font-bold mb-4">Ton Éditorial (Tone of Voice)</h3>
-            <p className="text-sm text-muted-foreground mb-4">Définissez la personnalité de l'IA lorsqu'elle génère du contenu pour cette marque.</p>
-            
+            <p className="text-sm text-muted-foreground mb-4">Définissez la personnalité de l&apos;IA lorsqu&apos;elle génère du contenu pour cette marque.</p>
+
             <div className="grid grid-cols-2 gap-3 mb-6">
-              {["Corporate & Expert", "Friendly & Accessible", "Humoristique", "Technique & Précis"].map((tone, i) => (
-                <button key={i} className={`p-3 text-sm font-medium rounded-xl border transition-all text-left ${i === 1 ? 'border-primary bg-primary/10 text-primary' : 'border-white/10 bg-white/5 text-muted-foreground hover:bg-white/10'}`}>
+              {TONE_OPTIONS.map((tone) => (
+                <button
+                  key={tone}
+                  onClick={() => setSelectedTone(tone)}
+                  className={`p-3 text-sm font-medium rounded-xl border transition-all text-left ${
+                    selectedTone === tone
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-white/10 bg-white/5 text-muted-foreground hover:bg-white/10"
+                  }`}
+                >
                   {tone}
                 </button>
               ))}
@@ -125,18 +270,21 @@ export default function BrandKitPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-1.5 block">Instructions Spécifiques</label>
-                <textarea 
-                  defaultValue="Nous tutoyons toujours notre audience. Nous utilisons des emojis de manière modérée (max 2 par post). Nous ne parlons jamais de politique ou de nos concurrents directs."
-                  className="w-full h-32 p-3 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none text-muted-foreground"
+                <label className="text-sm font-medium mb-1.5 block">Instructions spécifiques (Do & Don&apos;ts)</label>
+                <textarea
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  className="w-full h-32 p-3 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                 />
               </div>
               <div>
                 <label className="text-sm font-medium mb-1.5 block">Mots-clés de la Marque</label>
-                <input 
-                  type="text" 
-                  defaultValue="SaaS, Innovation, Gain de temps, Autopilot"
-                  className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-muted-foreground"
+                <input
+                  type="text"
+                  value={keywords}
+                  onChange={(e) => setKeywords(e.target.value)}
+                  placeholder="SaaS, Innovation, Gain de temps..."
+                  className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
               </div>
             </div>

@@ -34,7 +34,7 @@ export default function ForgotPasswordPage() {
             </div>
             <h1 className="text-4xl font-bold tracking-tight mb-4">Autopilot</h1>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              Créez, planifiez et publiez votre contenu sur tous vos réseaux sociaux grâce à l'IA.
+              Créez, planifiez et publiez votre contenu sur tous vos réseaux sociaux grace à l&apos;IA.
             </p>
           </motion.div>
         </div>

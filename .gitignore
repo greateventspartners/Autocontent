@@ -31,8 +31,17 @@ yarn-error.log*
 .pnpm-debug.log*
 debug.log
 
-# env files (can opt-in for committing if needed)
-.env*
+# local dev database
+dev.db
+dev.db-journal
+
+# env files
+.env
+.env.*.local
+.env.local
+
+# allow example env file
+!.env.example
 
 # cloudflare
 .cloudflare

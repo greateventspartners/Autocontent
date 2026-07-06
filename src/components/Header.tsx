@@ -3,15 +3,17 @@
 import React from "react";
 import { Search, Bell, Menu } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
+import { useUser } from "@/lib/useUser";
 
 export default function Header() {
+  const { user } = useUser();
   return (
     <header className="h-20 px-8 flex items-center justify-between glass border-b border-white/5 dark:border-white/5 relative z-10 sticky top-0">
       <div className="flex items-center gap-4">
         <button className="md:hidden p-2 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
           <Menu size={20} />
         </button>
-        <h1 className="text-2xl font-bold tracking-tight">Bonjour, John 👋</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Bonjour{user ? `, ${user.name?.split(" ")[0] || user.email}` : ""} 👋</h1>
       </div>
 
       <div className="flex items-center gap-4">
