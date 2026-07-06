@@ -32,10 +32,7 @@ jobs:
           LINKEDIN_REDIRECT_URI: ${{ secrets.LINKEDIN_REDIRECT_URI }}
 
       - name: Deploy
-        run: |
-          npx --yes wrangler@latest deploy \
-            --account-id "$CLOUDFLARE_ACCOUNT_ID" \
-            --verbose
+        run: npx --yes wrangler@latest deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -43,12 +40,12 @@ jobs:
       - name: Set runtime secrets
         if: success()
         run: |
-          echo "${{ secrets.DATABASE_URL }}" | npx wrangler secret put DATABASE_URL --account-id "$CLOUDFLARE_ACCOUNT_ID"
-          echo "${{ secrets.GEMINI_API_KEY }}" | npx wrangler secret put GEMINI_API_KEY --account-id "$CLOUDFLARE_ACCOUNT_ID"
-          echo "${{ secrets.JWT_SECRET }}" | npx wrangler secret put JWT_SECRET --account-id "$CLOUDFLARE_ACCOUNT_ID"
-          echo "${{ secrets.LINKEDIN_CLIENT_ID }}" | npx wrangler secret put LINKEDIN_CLIENT_ID --account-id "$CLOUDFLARE_ACCOUNT_ID"
-          echo "${{ secrets.LINKEDIN_CLIENT_SECRET }}" | npx wrangler secret put LINKEDIN_CLIENT_SECRET --account-id "$CLOUDFLARE_ACCOUNT_ID"
-          echo "${{ secrets.LINKEDIN_REDIRECT_URI }}" | npx wrangler secret put LINKEDIN_REDIRECT_URI --account-id "$CLOUDFLARE_ACCOUNT_ID"
+          echo "${{ secrets.DATABASE_URL }}" | npx wrangler secret put DATABASE_URL
+          echo "${{ secrets.GEMINI_API_KEY }}" | npx wrangler secret put GEMINI_API_KEY
+          echo "${{ secrets.JWT_SECRET }}" | npx wrangler secret put JWT_SECRET
+          echo "${{ secrets.LINKEDIN_CLIENT_ID }}" | npx wrangler secret put LINKEDIN_CLIENT_ID
+          echo "${{ secrets.LINKEDIN_CLIENT_SECRET }}" | npx wrangler secret put LINKEDIN_CLIENT_SECRET
+          echo "${{ secrets.LINKEDIN_REDIRECT_URI }}" | npx wrangler secret put LINKEDIN_REDIRECT_URI
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

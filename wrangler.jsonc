@@ -2,6 +2,7 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "main": ".open-next/worker.js",
   "name": "autocontent",
+  "account_id": "3d2a6c0ba201132b6b5abf5b9472cbd0",
   "compatibility_date": "2026-06-26",
   "compatibility_flags": [
     "nodejs_compat"
