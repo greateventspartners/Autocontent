@@ -6,7 +6,7 @@ const COOKIE_NAME = "session";
 const protectedPaths = ["/dashboard", "/copilot", "/calendar", "/brand-kit", "/approvals", "/settings"];
 const authPaths = ["/", "/login", "/register", "/forgot-password"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSession = request.cookies.has(COOKIE_NAME);
 
