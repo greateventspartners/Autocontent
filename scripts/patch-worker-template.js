@@ -79,3 +79,24 @@ code = code.replace(
 
 fs.writeFileSync(workerPath, code, "utf-8");
 console.log("Worker template patched: outer try-catch + dynamic middleware + DO stubs");
+
+// --- Also patch the OpenNext requestHandler error serialization ---
+const requestHandlerPath = path.resolve(
+  __dirname,
+  "../node_modules/@opennextjs/aws/dist/core/requestHandler.js"
+);
+let rhCode = fs.readFileSync(requestHandlerPath, "utf-8");
+rhCode = rhCode.replace(
+  `res.end(JSON.stringify({
+            message: "Server failed to respond.",
+            details: e,
+        }, null, 2));`,
+  `res.end(JSON.stringify({
+            message: "Server failed to respond.",
+            errorMessage: e?.message ?? (typeof e === "string" ? e : undefined),
+            errorName: e?.name ?? typeof e,
+            errorStack: e?.stack ?? undefined,
+        }, null, 2));`
+);
+fs.writeFileSync(requestHandlerPath, rhCode, "utf-8");
+console.log("requestHandler patched: error details include message and stack");

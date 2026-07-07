@@ -26,22 +26,17 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-      - name: Debug - verify patch applied
-        run: |
-          echo "=== Template worker.js (first 5 lines) ==="
-          head -5 node_modules/@opennextjs/cloudflare/dist/cli/templates/worker.js
-          grep -c "return await" node_modules/@opennextjs/cloudflare/dist/cli/templates/worker.js && echo "PATCH OK: return await found" || echo "PATCH MISSING: return await not found"
-          grep -c "getMwHandler" node_modules/@opennextjs/cloudflare/dist/cli/templates/worker.js && echo "PATCH OK: dynamic middleware found" || echo "PATCH MISSING: dynamic middleware not found"
-
       - name: Build
         run: npx opennextjs-cloudflare build
 
-      - name: Debug - verify build output
-        run: |
-          echo "=== .open-next/worker.js (first 10 lines) ==="
-          head -10 .open-next/worker.js
-          echo "=== .open-next/worker.js (lines with 'try' or 'await') ==="
-          grep -n "try\|return await\|getMwHandler\|catch" .open-next/worker.js || echo "No debug markers found"
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: open-next-output
+          path: |
+            .open-next/worker.js
+            node_modules/@opennextjs/cloudflare/dist/cli/templates/worker.js
+          retention-days: 1
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
