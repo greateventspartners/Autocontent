@@ -2,11 +2,13 @@ import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 
-const jwtSecretStr = process.env.JWT_SECRET;
-if (!jwtSecretStr) {
-  throw new Error("JWT_SECRET est requis. Générez-en un avec: openssl rand -base64 32");
+function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET est requis. Générez-en un avec: openssl rand -base64 32");
+  }
+  return new TextEncoder().encode(secret);
 }
-const JWT_SECRET = new TextEncoder().encode(jwtSecretStr);
 
 const COOKIE_NAME = "session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -32,7 +34,7 @@ export async function createSession(userId: string, email: string) {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
@@ -52,7 +54,7 @@ export async function getSession(): Promise<SessionPayload | null> {
   if (!token) return null;
 
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     return payload as SessionPayload;
   } catch {
     return null;
