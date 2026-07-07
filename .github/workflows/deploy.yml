@@ -21,6 +21,11 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
+      - name: Patch worker template
+        run: node scripts/patch-worker-template.js
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       - name: Build
         run: npx opennextjs-cloudflare build
         env:
