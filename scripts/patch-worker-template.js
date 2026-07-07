@@ -24,7 +24,7 @@ async function getMwHandler() {
 }`,
 );
 
-// 2. Replace DO exports with lazy stubs (avoids loading failing modules at startup)
+// 2. Replace DO exports with stubs
 code = code.replace(
   `//@ts-expect-error: Will be resolved by wrangler build
 export { DOQueueHandler } from "./.build/durable-objects/queue.js";
@@ -37,15 +37,15 @@ export const DOShardedTagCache = undefined;
 export const BucketCachePurge = undefined;`,
 );
 
-// 3. Wrap fetch handler with try-catch
+// 3. WRAP ENTIRE FETCH in try-catch (not just the callback)
 code = code.replace(
   `export default {
     async fetch(request, env, ctx) {
         return runWithCloudflareRequestContext(request, env, ctx, async () => {`,
   `export default {
     async fetch(request, env, ctx) {
-        return runWithCloudflareRequestContext(request, env, ctx, async () => {
-            try {`
+        try {
+        return runWithCloudflareRequestContext(request, env, ctx, async () => {`
 );
 
 // 4. Use dynamic middleware handler
@@ -55,25 +55,26 @@ code = code.replace(
 const reqOrResp = await mw(request, env, ctx);`,
 );
 
-// 5. Replace closing with error handler
+// 5. Replace the closing: add catch for the outer try
 code = code.replace(
   `        });
     },
 };`,
-  `            } catch (err) {
-                console.error("Worker error:", err);
-                return new Response(JSON.stringify({
-                    error: err?.message ?? String(err),
-                    stack: err?.stack ?? undefined,
-                }), {
-                    status: 500,
-                    headers: { "content-type": "application/json" },
-                });
-            }
-        });
+  `        });
+        } catch (err) {
+            console.error("Worker startup error:", err);
+            return new Response(JSON.stringify({
+                error: err?.message ?? String(err),
+                stack: err?.stack ?? undefined,
+                name: err?.name ?? typeof err,
+            }), {
+                status: 500,
+                headers: { "content-type": "application/json" },
+            });
+        }
     },
 };`
 );
 
 fs.writeFileSync(workerPath, code, "utf-8");
-console.log("Worker template patched: lazy DO imports + dynamic middleware + error handling");
+console.log("Worker template patched: outer try-catch + dynamic middleware + DO stubs");
