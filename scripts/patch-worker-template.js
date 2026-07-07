@@ -37,15 +37,16 @@ export const DOShardedTagCache = undefined;
 export const BucketCachePurge = undefined;`,
 );
 
-// 3. WRAP ENTIRE FETCH in try-catch (not just the callback)
+// 3. WRAP ENTIRE FETCH in try-catch with await (async functions never throw synchronously)
 code = code.replace(
   `export default {
     async fetch(request, env, ctx) {
         return runWithCloudflareRequestContext(request, env, ctx, async () => {`,
   `export default {
     async fetch(request, env, ctx) {
+        console.log("fetch called", Date.now());
         try {
-        return runWithCloudflareRequestContext(request, env, ctx, async () => {`
+        return await runWithCloudflareRequestContext(request, env, ctx, async () => {`
 );
 
 // 4. Use dynamic middleware handler
