@@ -6,29 +6,39 @@ const workerPath = path.resolve(
   "../node_modules/@opennextjs/cloudflare/dist/cli/templates/worker.js"
 );
 
-const original = fs.readFileSync(workerPath, "utf-8");
+let code = fs.readFileSync(workerPath, "utf-8");
 
-// Replace static import of middleware with dynamic import at the top
-const step1 = original.replace(
+// 0. Add startup log
+code = `console.log("Worker loaded at", Date.now());\n` + code;
+
+// 1. Replace static middleware import with dynamic lazy import
+code = code.replace(
   `import { handler as middlewareHandler } from "./middleware/handler.mjs";`,
-  `let middlewareHandler;
-async function getMiddlewareHandler() {
-  if (!middlewareHandler) {
+  `let _mwHandler;
+async function getMwHandler() {
+  if (!_mwHandler) {
     const mod = await import("./middleware/handler.mjs");
-    middlewareHandler = mod.handler;
+    _mwHandler = mod.handler;
   }
-  return middlewareHandler;
+  return _mwHandler;
 }`,
 );
 
-// Replace static import of server-functions with dynamic
-const step2 = step1.replace(
-  `import { handler as serverHandler } from "./server-functions/default/handler.mjs";`,
-  "",
+// 2. Replace DO exports with lazy stubs (avoids loading failing modules at startup)
+code = code.replace(
+  `//@ts-expect-error: Will be resolved by wrangler build
+export { DOQueueHandler } from "./.build/durable-objects/queue.js";
+//@ts-expect-error: Will be resolved by wrangler build
+export { DOShardedTagCache } from "./.build/durable-objects/sharded-tag-cache.js";
+//@ts-expect-error: Will be resolved by wrangler build
+export { BucketCachePurge } from "./.build/durable-objects/bucket-cache-purge.js";`,
+  `export const DOQueueHandler = undefined;
+export const DOShardedTagCache = undefined;
+export const BucketCachePurge = undefined;`,
 );
 
-// Insert try-catch in fetch handler
-const step3 = step2.replace(
+// 3. Wrap fetch handler with try-catch
+code = code.replace(
   `export default {
     async fetch(request, env, ctx) {
         return runWithCloudflareRequestContext(request, env, ctx, async () => {`,
@@ -38,12 +48,15 @@ const step3 = step2.replace(
             try {`
 );
 
-const step4 = step3.replace(
+// 4. Use dynamic middleware handler
+code = code.replace(
   `const reqOrResp = await middlewareHandler(request, env, ctx);`,
-  `const reqOrResp = await getMiddlewareHandler().then(h => h(request, env, ctx));`,
+  `const mw = await getMwHandler();
+const reqOrResp = await mw(request, env, ctx);`,
 );
 
-const step5 = step4.replace(
+// 5. Replace closing with error handler
+code = code.replace(
   `        });
     },
 };`,
@@ -62,5 +75,5 @@ const step5 = step4.replace(
 };`
 );
 
-fs.writeFileSync(workerPath, step5, "utf-8");
-console.log("Patched worker template with dynamic middleware import + error handling");
+fs.writeFileSync(workerPath, code, "utf-8");
+console.log("Worker template patched: lazy DO imports + dynamic middleware + error handling");
