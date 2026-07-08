@@ -19,59 +19,39 @@ function findFiles(dir, pattern) {
   return results;
 }
 
-const targets = [
-  ...findFiles(outputDir, /handler\.mjs$/),
-  ...findFiles(outputDir, /worker\.js$/),
-];
+const targets = findFiles(outputDir, /\.(mjs|js)$/);
 
 for (const filePath of targets) {
-  console.log(`Patching ${filePath}...`);
   let code = fs.readFileSync(filePath, "utf-8");
-  let changed = false;
+  let original = code;
 
-  // Replace the instrumentation hook error throw with a simple null
-  // The minified bundled code has: throw Object.defineProperty(new Error('An error occurred...'), "__NEXT_ERROR_CODE", {...})
-  // We replace it with a return statement to make loadInstrumentationModule a no-op
-  const newCode = code.replace(
-    /throw\s+Object\.defineProperty\s*\(\s*new\s+Error\s*\(\s*['"]An error occurred while loading the instrumentation hook['"]/g,
-    "/* patched */ return void 0 /*"
+  // Pattern 1: Replace throw of instrumentation error with no-op
+  code = code.replace(
+    /throw\s+Object\.defineProperty\s*\(\s*new\s+Error\s*\(\s*(['"])(An error occurred while loading the instrumentation hook)\1[\s\S]*?\)\s*;/g,
+    "/* instrumentation hook suppressed on edge */"
   );
 
-  if (newCode !== code) {
-    code = newCode;
-    changed = true;
-  }
-
-  // Also replace the dynamic require call in getInstrumentationModule
-  // Pattern: await require(_nodepath.default.join(projectDir, distDir, 'server', `...instrumentation.js`))
-  // In bundled code this would be: await require(...path...,"server",...+"instrumentation"+...)
-  const code2 = code.replace(
-    /require\s*\([^)]*join\s*\([^)]*server[^)]*instrumentation[^)]*\)\s*\)/g,
-    "null /* patched dynamic require */"
+  // Pattern 2: Replace the dynamic require in getInstrumentationModule
+  code = code.replace(
+    /async function getInstrumentationModule\([\s\S]*?\{[\s\S]*?(?:cachedInstrumentationModule\s*=\s*(?:await\s+)?require\([\s\S]*?INSTRUMENTATION_HOOK_FILENAME[\s\S]*?instrumentation[\s\S]*?\))[\s\S]*?return\s+cachedInstrumentationModule[\s\S]*?\}/g,
+    "async function getInstrumentationModule(a,b) { if (cachedInstrumentationModule) return cachedInstrumentationModule; cachedInstrumentationModule = null; return cachedInstrumentationModule; }"
   );
 
-  if (code2 !== code) {
-    code = code2;
-    changed = true;
-  }
-
-  // Also replace: cachedInstrumentationModule = (0, _interopdefault.interopDefault)(await require(...))
-  // to: cachedInstrumentationModule = null
-  const code3 = code.replace(
-    /cachedInstrumentationModule\s*=\s*\(?\s*0?\s*,\s*_interopdefault\??\.?\s*interopDefault\s*\)?\s*\(\s*await\s+null\s*\/\*\s*patched\s+dynamic\s+require\s*\*\//g,
-    "cachedInstrumentationModule = null"
+  // Pattern 3: Replace registerInstrumentation to no-op
+  code = code.replace(
+    /async function registerInstrumentation\([\s\S]*?\{[\s\S]*?(?:getInstrumentationModule|instrumentation\??\.\s*register)[\s\S]*?\}/g,
+    "async function registerInstrumentation(a,b) { }"
   );
 
-  if (code3 !== code) {
-    code = code3;
-    changed = true;
-  }
+  // Pattern 4: Replace loadInstrumentationModule to suppress error
+  code = code.replace(
+    /async\s+(?:loadInstrumentationModule)\s*\([\s\S]*?\{[\s\S]*?(?:err\.code\s*(?:!==?|!=)\s*(['"])MODULE_NOT_FOUND\1)[\s\S]*?(?:throw\s+Object\.defineProperty|instrumentation\s*hook)[\s\S]*?return\s+(?:this\.)?instrumentation[\s\S]*?\}/g,
+    "async loadInstrumentationModule() { try { this.instrumentation = null; } catch(e) {} return this.instrumentation; }"
+  );
 
-  if (changed) {
+  if (code !== original) {
     fs.writeFileSync(filePath, code, "utf-8");
-    console.log(`  Patched successfully`);
-  } else {
-    console.log(`  No instrumentation pattern found (already patched or different structure)`);
+    console.log(`Patched: ${filePath}`);
   }
 }
 
