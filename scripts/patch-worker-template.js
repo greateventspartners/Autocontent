@@ -99,3 +99,38 @@ rhCode = rhCode.replace(
 );
 fs.writeFileSync(requestHandlerPath, rhCode, "utf-8");
 console.log("requestHandler patched: error details include message and stack");
+
+// --- Patch patchInstrumentation plugin to add string-based replacement for instrumentation throw ---
+const instrumentationPluginPath = path.resolve(
+  __dirname,
+  "../node_modules/@opennextjs/cloudflare/dist/cli/build/patches/plugins/instrumentation.js"
+);
+let instCode = fs.readFileSync(instrumentationPluginPath, "utf-8");
+// Add a new ContentUpdater rule that replaces the throw with a no-op using string replacement
+// This works because ContentUpdater processes source files BEFORE esbuild bundles them
+instCode = instCode.replace(
+  `return {
+        name: "patch-instrumentation",
+        setup() { },
+    };`,
+  `    // Also add a simple string replacement for the throw in next-server.js
+    // Uses the unique error message as anchor to handle nested braces
+    updater.updateContent("patch-instrumentation-throw", [
+        {
+            filter: /\\.(js|mjs|cjs)$/,
+            contentFilter: /An error occurred while loading the instrumentation hook/,
+            callback: ({ contents }) => {
+                return contents.replace(
+                    /throw\\s+Object\\.defineProperty\\s*\\(\\s*new\\s+Error\\s*\\(\\s*['"]An error occurred while loading the instrumentation hook['"][\\s\\S]*?\\);/g,
+                    '/* instrumentation hook suppressed on edge */'
+                );
+            },
+        },
+    ]);
+    return {
+        name: "patch-instrumentation",
+        setup() { },
+    };`
+);
+fs.writeFileSync(instrumentationPluginPath, instCode, "utf-8");
+console.log("patchInstrumentation plugin patched: added string replace rule for throw");
