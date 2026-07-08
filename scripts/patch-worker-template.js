@@ -140,3 +140,36 @@ nsCode = nsCode.replace(
 );
 fs.writeFileSync(nextServerPath, nsCode, "utf-8");
 console.log("next-server.js patched: instrumentation hook errors suppressed");
+
+// --- Patch instrumentation-globals.external.js to not use dynamic require ---
+const instrumentationGlobalsPath = path.resolve(
+  __dirname,
+  "../node_modules/next/dist/server/lib/router-utils/instrumentation-globals.external.js"
+);
+let igCode = fs.readFileSync(instrumentationGlobalsPath, "utf-8");
+// Replace getInstrumentationModule to return null (no-op on edge workers)
+igCode = igCode.replace(
+  `async function getInstrumentationModule(projectDir, distDir) {
+    if (cachedInstrumentationModule) {
+        return cachedInstrumentationModule;
+    }
+    try {
+        cachedInstrumentationModule = (0, _interopdefault.interopDefault)(await require(_nodepath.default.join(projectDir, distDir, 'server', \`\${_constants.INSTRUMENTATION_HOOK_FILENAME}.js\`)));
+        return cachedInstrumentationModule;
+    } catch (err) {
+        if ((0, _iserror.default)(err) && err.code !== 'ENOENT' && err.code !== 'MODULE_NOT_FOUND' && err.code !== 'ERR_MODULE_NOT_FOUND') {
+            throw err;
+        }
+    }
+}`,
+  `async function getInstrumentationModule(projectDir, distDir) {
+    if (cachedInstrumentationModule) {
+        return cachedInstrumentationModule;
+    }
+    // Dynamic require is not supported on edge workers, return null
+    cachedInstrumentationModule = null;
+    return cachedInstrumentationModule;
+}`
+);
+fs.writeFileSync(instrumentationGlobalsPath, igCode, "utf-8");
+console.log("instrumentation-globals.external.js patched: getInstrumentationModule returns null");
