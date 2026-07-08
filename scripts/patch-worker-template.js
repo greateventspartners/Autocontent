@@ -100,3 +100,43 @@ rhCode = rhCode.replace(
 );
 fs.writeFileSync(requestHandlerPath, rhCode, "utf-8");
 console.log("requestHandler patched: error details include message and stack");
+
+// --- Patch next-server.js to suppress instrumentation hook loading error ---
+const nextServerPath = path.resolve(
+  __dirname,
+  "../node_modules/next/dist/server/next-server.js"
+);
+let nsCode = fs.readFileSync(nextServerPath, "utf-8");
+// Replace the loadInstrumentationModule method with a no-op that never throws
+nsCode = nsCode.replace(
+  `async loadInstrumentationModule() {
+        if (!this.serverOptions.dev) {
+            try {
+                this.instrumentation = await (0, _instrumentationglobalsexternal.getInstrumentationModule)(this.dir, this.nextConfig.distDir);
+            } catch (err) {
+                if (err.code !== 'MODULE_NOT_FOUND') {
+                    throw Object.defineProperty(new Error('An error occurred while loading the instrumentation hook', {
+                        cause: err
+                    }), "__NEXT_ERROR_CODE", {
+                        value: "E92",
+                        enumerable: false,
+                        configurable: true
+                    });
+                }
+            }
+        }
+        return this.instrumentation;
+    }`,
+  `async loadInstrumentationModule() {
+        if (!this.serverOptions.dev) {
+            try {
+                this.instrumentation = await (0, _instrumentationglobalsexternal.getInstrumentationModule)(this.dir, this.nextConfig.distDir);
+            } catch (err) {
+                // Silently ignore instrumentation loading errors on edge
+            }
+        }
+        return this.instrumentation;
+    }`
+);
+fs.writeFileSync(nextServerPath, nsCode, "utf-8");
+console.log("next-server.js patched: instrumentation hook errors suppressed");
