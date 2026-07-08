@@ -28,15 +28,6 @@ jobs:
 
       - name: Build
         run: npx opennextjs-cloudflare build
-
-      - uses: actions/upload-artifact@v4
-        if: success()
-        with:
-          name: open-next-output
-          path: |
-            .open-next/worker.js
-            node_modules/@opennextjs/cloudflare/dist/cli/templates/worker.js
-          retention-days: 1
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -44,6 +35,9 @@ jobs:
           LINKEDIN_CLIENT_ID: ${{ secrets.LINKEDIN_CLIENT_ID }}
           LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
           LINKEDIN_REDIRECT_URI: ${{ secrets.LINKEDIN_REDIRECT_URI }}
+
+      - name: Patch build output
+        run: node scripts/patch-build-output.js
 
       - name: Deploy
         run: npx --yes wrangler@latest deploy
