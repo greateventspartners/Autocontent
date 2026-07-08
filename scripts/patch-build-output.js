@@ -20,39 +20,72 @@ function findFiles(dir, pattern) {
 }
 
 const targets = findFiles(outputDir, /\.(mjs|js)$/);
+const ERROR_MSG = "An error occurred while loading the instrumentation hook";
 
 for (const filePath of targets) {
   let code = fs.readFileSync(filePath, "utf-8");
   let original = code;
+  let pos = code.indexOf(ERROR_MSG);
 
-  // Pattern 1: Replace throw of instrumentation error with no-op
-  code = code.replace(
-    /throw\s+Object\.defineProperty\s*\(\s*new\s+Error\s*\(\s*(['"])(An error occurred while loading the instrumentation hook)\1[\s\S]*?\)\s*;/g,
-    "/* instrumentation hook suppressed on edge */"
-  );
+  if (pos < 0) continue;
 
-  // Pattern 2: Replace the dynamic require in getInstrumentationModule
-  code = code.replace(
-    /async function getInstrumentationModule\([\s\S]*?\{[\s\S]*?(?:cachedInstrumentationModule\s*=\s*(?:await\s+)?require\([\s\S]*?INSTRUMENTATION_HOOK_FILENAME[\s\S]*?instrumentation[\s\S]*?\))[\s\S]*?return\s+cachedInstrumentationModule[\s\S]*?\}/g,
-    "async function getInstrumentationModule(a,b) { if (cachedInstrumentationModule) return cachedInstrumentationModule; cachedInstrumentationModule = null; return cachedInstrumentationModule; }"
-  );
+  console.log(`Found instrumentation error in ${filePath}`);
 
-  // Pattern 3: Replace registerInstrumentation to no-op
-  code = code.replace(
-    /async function registerInstrumentation\([\s\S]*?\{[\s\S]*?(?:getInstrumentationModule|instrumentation\??\.\s*register)[\s\S]*?\}/g,
-    "async function registerInstrumentation(a,b) { }"
-  );
+  // Walk backwards to find `throw` (the keyword right before the Object.defineProperty)
+  let throwPos = -1;
+  for (let i = pos; i >= 0; i--) {
+    const snippet = code.substring(i, i + 5);
+    if (snippet === "throw") {
+      // Verify it's actually a throw keyword (not "throw" inside a string or variable)
+      const before = i > 0 ? code[i - 1] : " ";
+      const after = code[i + 5] || " ";
+      if (/\s/.test(before) && /\s/.test(after)) {
+        throwPos = i;
+        break;
+      }
+    }
+  }
 
-  // Pattern 4: Replace loadInstrumentationModule to suppress error
-  code = code.replace(
-    /async\s+(?:loadInstrumentationModule)\s*\([\s\S]*?\{[\s\S]*?(?:err\.code\s*(?:!==?|!=)\s*(['"])MODULE_NOT_FOUND\1)[\s\S]*?(?:throw\s+Object\.defineProperty|instrumentation\s*hook)[\s\S]*?return\s+(?:this\.)?instrumentation[\s\S]*?\}/g,
-    "async loadInstrumentationModule() { try { this.instrumentation = null; } catch(e) {} return this.instrumentation; }"
-  );
+  if (throwPos < 0) {
+    console.log("  Could not find 'throw' before the error message");
+    continue;
+  }
+
+  // Walk forward to find the end of the throw statement (the final ; or ))
+  // Count parentheses to find matching close
+  let parenCount = 0;
+  let endPos = pos;
+  // First, find the beginning of Object.defineProperty
+  let objDefPos = code.indexOf("Object.defineProperty", pos - 80);
+  if (objDefPos < 0 || objDefPos > pos) objDefPos = pos;
+  
+  // Count from objDefPos to find matching closing
+  let started = false;
+  for (let i = objDefPos; i < code.length; i++) {
+    if (code[i] === "(") { parenCount++; started = true; }
+    else if (code[i] === ")") { parenCount--; }
+    if (started && parenCount === 0) {
+      endPos = i;
+      break;
+    }
+  }
+
+  // The end of throw statement is endPos + 1 (the closing ) ) plus optional ;
+  let stmtEnd = endPos + 1;
+  // Skip the )
+  // If next char is ;, include it
+  if (stmtEnd < code.length && code[stmtEnd] === ";") stmtEnd++;
+
+  // Replace the entire throw statement with a no-op
+  const beforeThrow = code.substring(0, throwPos);
+  const afterStmt = code.substring(stmtEnd);
+  
+  code = beforeThrow + "{/* instrumentation hook suppressed on edge */}" + afterStmt;
 
   if (code !== original) {
     fs.writeFileSync(filePath, code, "utf-8");
-    console.log(`Patched: ${filePath}`);
+    console.log("  Patched successfully");
   }
 }
 
-console.log("Done patching build output");
+console.log("Done");
