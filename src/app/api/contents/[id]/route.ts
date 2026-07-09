@@ -1,3 +1,4 @@
+import { Status } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
@@ -68,7 +69,7 @@ export async function PUT(
       where: { id },
       data: {
         ...(body.sourceIdea !== undefined && { sourceIdea: body.sourceIdea }),
-        ...(body.status !== undefined && { status: body.status as any }),
+        ...(body.status !== undefined && { status: body.status as Status }),
       },
     });
 

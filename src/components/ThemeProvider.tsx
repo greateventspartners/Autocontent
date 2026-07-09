@@ -32,6 +32,7 @@ export default function ThemeProvider({
     const stored = localStorage.getItem("theme") as Theme | null;
     const preferred = stored || "dark";
     document.documentElement.classList.toggle("dark", preferred === "dark");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setState({ theme: preferred, mounted: true });
   }, []);
 

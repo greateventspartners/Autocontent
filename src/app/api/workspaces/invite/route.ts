@@ -1,3 +1,4 @@
+import { WorkspaceRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import crypto from "crypto";
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
         workspaceId,
         email,
         token,
-        role: inviteRole as any,
+        role: inviteRole as WorkspaceRole,
         expiresAt,
       },
     });

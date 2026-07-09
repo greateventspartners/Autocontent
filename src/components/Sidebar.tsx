@@ -35,13 +35,16 @@ export default function Sidebar() {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary to-purple-600 flex items-center justify-center shadow-lg">
             <span className="text-white font-bold text-lg">A</span>
           </div>
-          <span className="text-xl font-bold tracking-tight text-foreground">Autopilot</span>
+          <span className="text-xl font-bold tracking-tight text-foreground">Autocontent</span>
         </div>
         
-        <button className="w-full mb-8 flex items-center justify-center gap-2 bg-foreground text-background hover:bg-foreground/90 transition-all font-medium py-2.5 px-4 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-          <Plus size={18} />
-          Créer avec l&apos;IA
-        </button>
+          <Link
+            href="/copilot"
+            className="w-full mb-8 flex items-center justify-center gap-2 bg-foreground text-background hover:bg-foreground/90 transition-all font-medium py-2.5 px-4 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          >
+            <Plus size={18} />
+            Créer avec l&apos;IA
+          </Link>
       </div>
 
       <nav className="flex-1 px-4 space-y-1 overflow-y-auto">

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, MoreHorizontal, Plus, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -176,9 +177,12 @@ export default function CalendarPage() {
           <button onClick={today} className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-medium hover:bg-white/10 transition-colors">
             Aujourd&apos;hui
           </button>
-          <button className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/25 font-medium text-sm flex items-center gap-2">
+          <Link
+            href="/copilot"
+            className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/25 font-medium text-sm flex items-center gap-2"
+          >
             <Plus size={16} /> Créer
-          </button>
+          </Link>
         </div>
       </div>
 

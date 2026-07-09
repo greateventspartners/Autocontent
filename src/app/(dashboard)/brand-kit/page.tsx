@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Palette, Search, Upload, Plus, Check, Wand2, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -9,6 +9,7 @@ type Color = { hex: string; name: string };
 type BrandKitData = {
   id: string;
   name: string;
+  logoUrl: string | null;
   colors: Color[];
   fonts: { keywords?: string } | null;
   toneOfVoice: string | null;
@@ -42,7 +43,10 @@ export default function BrandKitPage() {
   const [instructions, setInstructions] = useState("");
   const [keywords, setKeywords] = useState("");
   const [url, setUrl] = useState("");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [analyzeError, setAnalyzeError] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const logoRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -62,10 +66,11 @@ export default function BrandKitPage() {
             const parsed = bk.fonts as { keywords?: string };
             if (parsed.keywords) setKeywords(parsed.keywords);
           }
+          if (bk.logoUrl) setLogoUrl(bk.logoUrl);
         } else {
           setSelectedTone(TONE_OPTIONS[1]);
           setInstructions("Nous tutoyons toujours notre audience. Nous utilisons des emojis de manière modérée (max 2 par post). Nous ne parlons jamais de politique ou de nos concurrents directs.");
-          setKeywords("SaaS, Innovation, Gain de temps, Autopilot");
+          setKeywords("SaaS, Innovation, Gain de temps, Autocontent");
         }
       })
       .catch(() => setError("Impossible de charger le Brand Kit"))
@@ -79,6 +84,7 @@ export default function BrandKitPage() {
 
     const payload = {
       name: "Brand Kit",
+      logoUrl: logoUrl ?? undefined,
       colors,
       toneOfVoice: selectedTone,
       doAndDonts: instructions,
@@ -108,10 +114,45 @@ export default function BrandKitPage() {
     }
   };
 
-  const simulateAnalysis = () => {
+  const analyzeSite = async () => {
     if (!url) return;
     setIsAnalyzing(true);
-    setTimeout(() => setIsAnalyzing(false), 2000);
+    setAnalyzeError("");
+    try {
+      const res = await fetch("/api/brand-kit/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json() as {
+        error?: string;
+        analysis?: {
+          colors?: { hex: string; name: string }[];
+          toneOfVoice?: string;
+          doAndDonts?: string;
+          keywords?: string;
+        };
+      };
+      if (!res.ok) throw new Error(data.error || "Analyse impossible");
+
+      const a = data.analysis;
+      if (a?.colors?.length) setColors(a.colors);
+      if (a?.toneOfVoice) setSelectedTone(a.toneOfVoice);
+      if (a?.doAndDonts) setInstructions(a.doAndDonts);
+      if (a?.keywords) setKeywords(a.keywords);
+    } catch (e) {
+      setAnalyzeError(e instanceof Error ? e.message : "Erreur d'analyse");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const onLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setLogoUrl(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const updateColor = (index: number, field: "hex" | "name", value: string) => {
@@ -180,11 +221,11 @@ export default function BrandKitPage() {
                 className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-muted-foreground/70"
               />
             </div>
-            <button
-              onClick={simulateAnalysis}
-              disabled={!url || isAnalyzing}
-              className="px-6 py-2.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl font-medium text-sm transition-all disabled:opacity-50 flex items-center justify-center min-w-[140px]"
-            >
+              <button
+                onClick={analyzeSite}
+                disabled={!url || isAnalyzing}
+                className="px-6 py-2.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl font-medium text-sm transition-all disabled:opacity-50 flex items-center justify-center min-w-[140px]"
+              >
               {isAnalyzing ? (
                 <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
                   <Search size={18} />
@@ -194,6 +235,9 @@ export default function BrandKitPage() {
               )}
             </button>
           </div>
+          {analyzeError && (
+            <p className="text-sm text-red-400 mt-2">{analyzeError}</p>
+          )}
         </div>
       </div>
 
@@ -201,15 +245,32 @@ export default function BrandKitPage() {
         <div className="space-y-6">
           <div className="glass-card rounded-2xl p-6">
             <h3 className="text-lg font-bold mb-4">Logo & Icônes</h3>
-            <div className="flex gap-4">
-              <div className="w-24 h-24 rounded-xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors cursor-pointer bg-white/[0.02]">
-                <Upload size={24} className="mb-2" />
-                <span className="text-xs font-medium">Logo principal</span>
-              </div>
-              <div className="w-24 h-24 rounded-xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors cursor-pointer bg-white/[0.02]">
-                <Upload size={24} className="mb-2" />
-                <span className="text-xs font-medium">Favicon</span>
-              </div>
+            <div className="flex gap-4 items-start">
+              <button
+                type="button"
+                onClick={() => logoRef.current?.click()}
+                className="w-24 h-24 rounded-xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors cursor-pointer bg-white/[0.02] overflow-hidden relative"
+              >
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                ) : (
+                  <>
+                    <Upload size={24} className="mb-2" />
+                    <span className="text-xs font-medium">Logo principal</span>
+                  </>
+                )}
+              </button>
+              {logoUrl && (
+                <button
+                  type="button"
+                  onClick={() => setLogoUrl(null)}
+                  className="text-xs text-destructive hover:underline"
+                >
+                  Retirer
+                </button>
+              )}
+              <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={onLogo} />
             </div>
           </div>
 

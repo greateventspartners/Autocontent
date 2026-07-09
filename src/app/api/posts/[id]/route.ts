@@ -39,7 +39,7 @@ export async function PATCH(
 
     const data: Record<string, unknown> = {};
     if (status !== undefined) {
-      const validStatuses = ["DRAFT", "PENDING_APPROVAL", "APPROVED", "SCHEDULED", "PUBLISHED", "FAILED"];
+      const validStatuses = ["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED", "SCHEDULED", "PUBLISHED", "FAILED"];
       if (!validStatuses.includes(String(status))) {
         return Response.json({ error: "Statut invalide" }, { status: 400 });
       }

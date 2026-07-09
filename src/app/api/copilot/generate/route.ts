@@ -1,3 +1,4 @@
+import { Platform } from "@prisma/client";
 import { generateContent } from "@/lib/gemini";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
     const post = await prisma.post.create({
       data: {
         contentId: content.id,
-        platform: normalized.toUpperCase() as any,
+        platform: normalized.toUpperCase() as Platform,
         body: result.content,
         status: "DRAFT",
       },

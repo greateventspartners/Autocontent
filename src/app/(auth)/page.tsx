@@ -68,7 +68,7 @@ export default function LoginPage() {
                 <span className="text-white font-bold text-3xl">A</span>
               </div>
             </Link>
-            <h1 className="text-4xl font-bold tracking-tight mb-4">Autopilot</h1>
+            <h1 className="text-4xl font-bold tracking-tight mb-4">Autocontent</h1>
             <p className="text-lg text-muted-foreground leading-relaxed">
               Créez, planifiez et publiez votre contenu sur tous vos réseaux sociaux grace à l&apos;IA.
             </p>
@@ -103,7 +103,7 @@ export default function LoginPage() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-purple-600 flex items-center justify-center shadow-lg">
               <span className="text-white font-bold text-xl">A</span>
             </div>
-            <span className="text-2xl font-bold tracking-tight">Autopilot</span>
+            <span className="text-2xl font-bold tracking-tight">Autocontent</span>
           </Link>
 
           <div className="text-center lg:text-left">

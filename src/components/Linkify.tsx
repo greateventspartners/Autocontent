@@ -8,7 +8,7 @@ export default function Linkify({ children }: { children: string }) {
   return (
     <>
       {parts.map((part, i) =>
-        URL_REGEX.test(part) ? (
+        /^https?:\/\//.test(part) ? (
           <a
             key={i}
             href={part}

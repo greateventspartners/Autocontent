@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
@@ -59,8 +60,8 @@ export async function PUT(
       data: {
         ...(body.name !== undefined && { name: String(body.name) }),
         ...(body.logoUrl !== undefined && { logoUrl: String(body.logoUrl) }),
-        ...(body.colors !== undefined && { colors: body.colors as any }),
-        ...(body.fonts !== undefined && { fonts: body.fonts as any }),
+        ...(body.colors !== undefined && { colors: body.colors as Prisma.InputJsonValue }),
+        ...(body.fonts !== undefined && { fonts: body.fonts as Prisma.InputJsonValue }),
         ...(body.toneOfVoice !== undefined && { toneOfVoice: String(body.toneOfVoice) }),
         ...(body.doAndDonts !== undefined && { doAndDonts: String(body.doAndDonts) }),
       },

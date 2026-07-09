@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { CheckCircle, XCircle, MessageSquare, Link as LinkIcon, AlertCircle, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, MessageSquare, Link as LinkIcon, AlertCircle, Share2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type ApprovalPost = {
@@ -12,6 +12,7 @@ type ApprovalPost = {
   status: string;
   scheduledAt: string | null;
   campaignTitle: string;
+  content?: { sourceIdea: string; campaign?: { title: string } };
 };
 
 type Tab = "pending" | "approved" | "rejected";
@@ -22,6 +23,8 @@ export default function ApprovalsPage() {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("pending");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [publishLoading, setPublishLoading] = useState<string | null>(null);
+  const [clientCopied, setClientCopied] = useState(false);
 
   const fetchPosts = (status: string) => {
     setLoading(true);
@@ -42,7 +45,7 @@ export default function ApprovalsPage() {
           body: p.body,
           status: p.status,
           scheduledAt: p.scheduledAt,
-          campaignTitle: (p as any).content?.campaign?.title || "",
+          campaignTitle: p.content?.campaign?.title || "",
         }));
         setPosts(mapped);
       })
@@ -54,8 +57,9 @@ export default function ApprovalsPage() {
     const statusMap: Record<Tab, string> = {
       pending: "PENDING_APPROVAL",
       approved: "APPROVED",
-      rejected: "DRAFT",
+      rejected: "REJECTED",
     };
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPosts(statusMap[activeTab]);
   }, [activeTab]);
 
@@ -78,6 +82,30 @@ export default function ApprovalsPage() {
       setError(e instanceof Error ? e.message : "Erreur lors de l'action");
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handlePublish = async (id: string) => {
+    setPublishLoading(id);
+    try {
+      const res = await fetch(`/api/posts/${id}/publish`, { method: "POST" });
+      const data = await res.json() as {
+        result?: { ok: boolean; url?: string; error?: string };
+        composerUrl?: string | null;
+      };
+
+      if (data.result?.ok) {
+        if (data.result.url) window.open(data.result.url, "_blank", "noopener,noreferrer");
+        setPosts((prev) => prev.filter((p) => p.id !== id));
+      } else if (data.composerUrl) {
+        window.open(data.composerUrl, "_blank", "noopener,noreferrer");
+      } else {
+        setError(data.result?.error || "Publication impossible.");
+      }
+    } catch {
+      setError("Erreur réseau lors de la publication.");
+    } finally {
+      setPublishLoading(null);
     }
   };
 
@@ -108,9 +136,23 @@ export default function ApprovalsPage() {
           </h2>
           <p className="text-muted-foreground mt-1">Validez les contenus avant publication ou générez un lien magique pour vos clients.</p>
         </div>
-        <button className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm flex items-center gap-2 transition-colors">
-          <LinkIcon size={16} /> Générer Lien Client
-        </button>
+          <button
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(
+                  `${window.location.origin}/approvals`,
+                );
+                setClientCopied(true);
+                setTimeout(() => setClientCopied(false), 2500);
+              } catch {
+                setError("Copie impossible.");
+              }
+            }}
+            className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm flex items-center gap-2 transition-colors"
+          >
+            {clientCopied ? <CheckCircle size={16} className="text-emerald-400" /> : <LinkIcon size={16} />}
+            {clientCopied ? "Lien copié" : "Générer Lien Client"}
+          </button>
       </div>
 
       {error && (
@@ -189,7 +231,7 @@ export default function ApprovalsPage() {
                     <div className="flex items-center gap-3 mb-3">
                       <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
                       <div>
-                        <p className="font-bold text-sm">Autopilot App</p>
+                        <p className="font-bold text-sm">Autocontent</p>
                         <p className="text-xs text-gray-500">{post.campaignTitle || "Campagne"}</p>
                       </div>
                     </div>
@@ -211,10 +253,25 @@ export default function ApprovalsPage() {
                     </button>
                   </div>
 
-                  {activeTab === "pending" && (
-                    <div className="mt-6 flex gap-3">
+                {activeTab === "pending" && (
+                  <div className="mt-6 space-y-3">
+                    <button
+                      onClick={() => handlePublish(post.id)}
+                      disabled={publishLoading === post.id}
+                      className="w-full py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {publishLoading === post.id ? (
+                        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                          className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                        />
+                      ) : (
+                        <Share2 size={18} />
+                      )}
+                      Publier maintenant
+                    </button>
+                    <div className="flex gap-3">
                       <button
-                        onClick={() => handleAction(post.id, "DRAFT")}
+                        onClick={() => handleAction(post.id, "REJECTED")}
                         disabled={actionLoading === post.id}
                         className="flex-1 py-2.5 bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                       >
@@ -242,7 +299,27 @@ export default function ApprovalsPage() {
                         Approuver
                       </button>
                     </div>
-                  )}
+                  </div>
+                )}
+
+                {activeTab !== "pending" && (
+                  <div className="mt-6">
+                    <button
+                      onClick={() => handlePublish(post.id)}
+                      disabled={publishLoading === post.id}
+                      className="w-full py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {publishLoading === post.id ? (
+                        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                          className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                        />
+                      ) : (
+                        <Share2 size={18} />
+                      )}
+                      Publier maintenant
+                    </button>
+                  </div>
+                )}
                 </div>
               </motion.div>
             ))}

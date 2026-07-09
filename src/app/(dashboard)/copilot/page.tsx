@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { Sparkles, Image as ImageIcon, Link as LinkIcon, Send, Share2, MessageCircle, Camera, ThumbsUp, Music, Grid3x3, Globe, BookOpen, AlertCircle, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Linkify from "@/components/Linkify";
+import { getComposerUrl } from "@/lib/publishers/composers";
 
 type Platform = {
   id: string;
@@ -37,6 +39,32 @@ export default function CopilotPage() {
   const [error, setError] = useState("");
   const [generated, setGenerated] = useState<Record<string, GeneratedData>>({});
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [publishMsg, setPublishMsg] = useState<string | null>(null);
+  const [urlOpen, setUrlOpen] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const q = searchParams.get("q");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (q) setPrompt(q);
+  }, [searchParams]);
+
+  const applyUrl = () => {
+    const u = urlInput.trim();
+    if (!u) return;
+    setPrompt((p) => `${p}\nSource : ${u}`.trim());
+    setUrlOpen(false);
+    setUrlInput("");
+  };
+
+  const onImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) setImagePreview(URL.createObjectURL(file));
+  };
 
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) return;
@@ -75,6 +103,53 @@ export default function CopilotPage() {
     }
   }, [prompt, activeTab]);
 
+  const copyContent = async () => {
+    if (!currentContent) return;
+    try {
+      await navigator.clipboard.writeText(currentContent);
+      setPublishMsg("Contenu copié dans le presse-papiers.");
+      setTimeout(() => setPublishMsg(null), 2500);
+    } catch {
+      setPublishMsg("Copie impossible. Sélectionnez le texte manuellement.");
+    }
+  };
+
+  const openComposer = () => {
+    if (!currentContent) return;
+    window.open(getComposerUrl(activeTab, currentContent), "_blank", "noopener,noreferrer");
+  };
+
+  const publishToNetwork = async () => {
+    if (!savedId || !currentContent) return;
+    setPublishing(true);
+    setPublishMsg(null);
+    try {
+      const res = await fetch(`/api/posts/${savedId}/publish`, { method: "POST" });
+      const data = await res.json() as {
+        result?: { ok: boolean; url?: string; error?: string };
+        composerUrl?: string | null;
+      };
+      if (data.result?.ok) {
+        setPublishMsg(data.result.url ? `Publié ! ${data.result.url}` : "Publié avec succès.");
+        if (data.result.url) window.open(data.result.url, "_blank", "noopener,noreferrer");
+      } else if (data.composerUrl) {
+        try {
+          await navigator.clipboard.writeText(currentContent);
+        } catch {
+          /* clipboard may be unavailable; composeur ouvert quand même */
+        }
+        window.open(data.composerUrl, "_blank", "noopener,noreferrer");
+        setPublishMsg("Contenu copié — collez-le dans le composeur ouvert.");
+      } else {
+        setPublishMsg(data.result?.error || "Publication impossible.");
+      }
+    } catch {
+      setPublishMsg("Erreur réseau lors de la publication.");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   const currentPlatform = platforms.find((p) => p.id === activeTab);
   const currentData = generated[activeTab];
   const currentContent = currentData?.content;
@@ -103,13 +178,53 @@ export default function CopilotPage() {
               />
             </div>
 
-            <div className="flex gap-2">
-              <button className="flex-1 py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors">
-                <LinkIcon size={16} /> URL
-              </button>
-              <button className="flex-1 py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors">
-                <ImageIcon size={16} /> Image
-              </button>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setUrlOpen((v) => !v)}
+                  className="flex-1 py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
+                >
+                  <LinkIcon size={16} /> URL
+                </button>
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="flex-1 py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
+                >
+                  <ImageIcon size={16} /> Image
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onImage} />
+              </div>
+
+              {urlOpen && (
+                <div className="flex gap-2">
+                  <input
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && applyUrl()}
+                    placeholder="https://..."
+                    className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  <button
+                    onClick={applyUrl}
+                    className="px-3 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium"
+                  >
+                    Ajouter
+                  </button>
+                </div>
+              )}
+
+              {imagePreview && (
+                <div className="relative w-fit">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagePreview} alt="Aperçu" className="h-20 rounded-lg border border-white/10" />
+                  <button
+                    onClick={() => setImagePreview(null)}
+                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-white text-xs flex items-center justify-center"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
             </div>
 
             {error && (
@@ -120,12 +235,34 @@ export default function CopilotPage() {
             )}
 
             <div className="mt-auto space-y-2">
-              {savedId && (
-                <div className="flex items-center gap-2 p-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                  <CheckCircle2 size={14} />
-                  Contenu sauvegardé dans le workspace
+            {savedId && currentContent && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={copyContent}
+                    className="flex-1 py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Copier
+                  </button>
+                  <button
+                    onClick={openComposer}
+                    className="flex-1 py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Ouvrir {currentPlatform?.label}
+                  </button>
+                  <button
+                    onClick={publishToNetwork}
+                    disabled={publishing}
+                    className="flex-1 py-2 px-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    {publishing ? "Publication…" : "Publier"}
+                  </button>
                 </div>
-              )}
+                {publishMsg && (
+                  <p className="text-xs text-emerald-400 break-all">{publishMsg}</p>
+                )}
+              </div>
+            )}
               <button
                 onClick={handleGenerate}
                 disabled={!prompt.trim() || isLoading}
@@ -182,7 +319,7 @@ export default function CopilotPage() {
                   {currentPlatform?.label[0] || "A"}
                 </div>
                 <div>
-                  <p className="font-bold text-sm">Autopilot App</p>
+                  <p className="font-bold text-sm">Autocontent</p>
                   <p className="text-xs text-gray-500">{activeTab === 'linkedin' ? '24,534 abonnés' : `@autopilot_app`}</p>
                 </div>
               </div>

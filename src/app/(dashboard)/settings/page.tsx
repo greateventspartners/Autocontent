@@ -60,18 +60,24 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    let linkedinMessage: string | null = null;
     if (params.get("linkedin") === "connected") {
-      setError("LinkedIn connecté avec succès !");
-      setTimeout(() => setError(""), 3000);
+      linkedinMessage = "LinkedIn connecté avec succès !";
     } else if (params.get("error") === "linkedin_denied") {
-      setError("Connexion LinkedIn annulée");
+      linkedinMessage = "Connexion LinkedIn annulée";
     } else if (params.get("error") === "linkedin_failed") {
-      setError("Échec de la connexion LinkedIn");
+      linkedinMessage = "Échec de la connexion LinkedIn";
     }
     const url = new URL(window.location.href);
     url.searchParams.delete("linkedin");
     url.searchParams.delete("error");
     window.history.replaceState({}, "", url.toString());
+
+    if (linkedinMessage) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setError(linkedinMessage);
+      setTimeout(() => setError(""), 3000);
+    }
 
     fetch("/api/workspaces/members")
       .then((res) => {
@@ -101,7 +107,7 @@ export default function SettingsPage() {
       if (linkedinUser) {
         handleLinkedinDisconnect();
       } else {
-        window.location.href = "/api/auth/linkedin";
+        window.location.assign("/api/auth/linkedin");
       }
       return;
     }

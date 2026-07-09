@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
@@ -51,8 +52,8 @@ export async function POST(request: Request) {
         workspaceId,
         name: String(body.name),
         logoUrl: body.logoUrl ? String(body.logoUrl) : null,
-        colors: (body.colors ?? null) as any,
-        fonts: (body.fonts ?? null) as any,
+        colors: body.colors ? (body.colors as Prisma.InputJsonValue) : Prisma.JsonNull,
+        fonts: body.fonts ? (body.fonts as Prisma.InputJsonValue) : Prisma.JsonNull,
         toneOfVoice: body.toneOfVoice ? String(body.toneOfVoice) : null,
         doAndDonts: body.doAndDonts ? String(body.doAndDonts) : null,
       },

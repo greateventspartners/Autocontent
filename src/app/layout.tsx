@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Autopilot | IA Multi-Channel Publishing",
+  title: "Autocontent | IA Multi-Channel Publishing",
   description: "Plateforme SaaS de marketing automatisée par l'IA",
 };
 
