@@ -30,6 +30,8 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 debug.log
+devlog.txt
+devlog.err
 
 # local dev database
 dev.db
