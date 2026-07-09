@@ -32,20 +32,26 @@ export default function BioPage() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
 
-  const generate = async () => {
+  const generate = async (platforms?: string[]) => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/bio/generate", { method: "POST" });
+      const res = await fetch("/api/bio/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(platforms ? { platforms } : {}),
+      });
       const data = await res.json() as { error?: string; bios?: Record<string, string[]> };
       if (!res.ok) throw new Error(data.error || "Génération impossible");
-      setBios(data.bios ?? {});
+      setBios((prev) => ({ ...(prev ?? {}), ...(data.bios ?? {}) }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur");
     } finally {
       setLoading(false);
     }
   };
+
+  const regenerate = (id: string) => generate([id]);
 
   const copy = async (key: string, text: string) => {
     try {
@@ -70,7 +76,7 @@ export default function BioPage() {
           </p>
         </div>
         <button
-          onClick={generate}
+          onClick={() => generate()}
           disabled={loading}
           className="px-5 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/25 font-medium text-sm flex items-center gap-2 transition-transform active:scale-95 disabled:opacity-50"
         >
@@ -109,16 +115,25 @@ export default function BioPage() {
               animate={{ opacity: 1, y: 0 }}
               className="glass-card rounded-2xl p-5 space-y-3"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <h3 className="font-bold">{platform.label}</h3>
-                <a
-                  href={PROFILE_URLS[platform.id]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
-                >
-                  Profil <ExternalLink size={12} />
-                </a>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => regenerate(platform.id)}
+                    disabled={loading}
+                    className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 disabled:opacity-50"
+                  >
+                    <Sparkles size={12} /> Régénérer
+                  </button>
+                  <a
+                    href={PROFILE_URLS[platform.id]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+                  >
+                    Profil <ExternalLink size={12} />
+                  </a>
+                </div>
               </div>
 
               {variants.length === 0 ? (

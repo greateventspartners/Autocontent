@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Bot, CalendarDays, Palette, CheckCircle, Settings, Plus, PenLine } from "lucide-react";
+import { LayoutDashboard, Bot, CalendarDays, Palette, CheckCircle, Settings, Plus, PenLine, Lightbulb } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useUser } from "@/lib/useUser";
@@ -18,6 +18,7 @@ const navItems = [
   { name: "Calendrier", href: "/calendar", icon: CalendarDays },
   { name: "Brand Kit", href: "/brand-kit", icon: Palette },
   { name: "Bio & Profils", href: "/bio", icon: PenLine },
+  { name: "Idées", href: "/ideas", icon: Lightbulb },
   { name: "Approbations", href: "/approvals", icon: CheckCircle },
 ];
 

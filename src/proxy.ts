@@ -3,10 +3,10 @@ import type { NextRequest } from "next/server";
 
 const COOKIE_NAME = "session";
 
-const protectedPaths = ["/dashboard", "/copilot", "/calendar", "/brand-kit", "/approvals", "/settings"];
+const protectedPaths = ["/dashboard", "/copilot", "/calendar", "/brand-kit", "/approvals", "/bio", "/ideas", "/settings"];
 const authPaths = ["/", "/login", "/register", "/forgot-password"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSession = request.cookies.has(COOKIE_NAME);
 
