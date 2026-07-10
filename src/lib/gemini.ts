@@ -116,6 +116,7 @@ export async function generateContent(
     toneOfVoice?: string | null;
     doAndDonts?: string | null;
     keywords?: string;
+    voiceSamples?: string[] | null;
   },
 ) {
   const config = platformConfigs[platform];
@@ -133,6 +134,12 @@ export async function generateContent(
   }
   if (brandKit?.keywords) {
     systemInstruction += `\n\nMots-clés à intégrer naturellement si pertinents: ${brandKit.keywords}`;
+  }
+  if (brandKit?.voiceSamples && brandKit.voiceSamples.length > 0) {
+    systemInstruction += `\n\nVoici des exemples de textes écrits dans la voix de cette marque. Utilise-les comme référence de style, ton et registre :`;
+    brandKit.voiceSamples.forEach((sample, i) => {
+      systemInstruction += `\n\n--- Exemple ${i + 1} ---\n${sample}`;
+    });
   }
 
   const model = getGenAI().getGenerativeModel({

@@ -56,6 +56,7 @@ export async function POST(request: Request) {
         fonts: body.fonts ? (body.fonts as Prisma.InputJsonValue) : Prisma.JsonNull,
         toneOfVoice: body.toneOfVoice ? String(body.toneOfVoice) : null,
         doAndDonts: body.doAndDonts ? String(body.doAndDonts) : null,
+        voiceSamples: body.voiceSamples ? (body.voiceSamples as Prisma.InputJsonValue) : Prisma.JsonNull,
       },
     });
 

@@ -14,6 +14,7 @@ type BrandKitData = {
   fonts: { keywords?: string } | null;
   toneOfVoice: string | null;
   doAndDonts: string | null;
+  voiceSamples: string[] | null;
 };
 
 type BrandKitResponse = {
@@ -42,6 +43,8 @@ export default function BrandKitPage() {
   const [selectedTone, setSelectedTone] = useState("");
   const [instructions, setInstructions] = useState("");
   const [keywords, setKeywords] = useState("");
+  const [voiceSamples, setVoiceSamples] = useState<string[]>([]);
+  const [voiceInput, setVoiceInput] = useState("");
   const [url, setUrl] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [analyzeError, setAnalyzeError] = useState("");
@@ -67,6 +70,9 @@ export default function BrandKitPage() {
             if (parsed.keywords) setKeywords(parsed.keywords);
           }
           if (bk.logoUrl) setLogoUrl(bk.logoUrl);
+          if (bk.voiceSamples && Array.isArray(bk.voiceSamples)) {
+            setVoiceSamples(bk.voiceSamples as string[]);
+          }
         } else {
           setSelectedTone(TONE_OPTIONS[1]);
           setInstructions("Nous tutoyons toujours notre audience. Nous utilisons des emojis de manière modérée (max 2 par post). Nous ne parlons jamais de politique ou de nos concurrents directs.");
@@ -88,6 +94,7 @@ export default function BrandKitPage() {
       colors,
       toneOfVoice: selectedTone,
       doAndDonts: instructions,
+      voiceSamples: voiceSamples.length > 0 ? voiceSamples : undefined,
       fonts: { keywords },
     };
 
@@ -347,6 +354,47 @@ export default function BrandKitPage() {
                   placeholder="SaaS, Innovation, Gain de temps..."
                   className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Exemples de voix de marque</label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Collez des exemples de textes qui représentent bien le ton de votre marque.
+                  L&apos;IA s&apos;en servira comme référence pour générer du contenu similaire.
+                </p>
+                <div className="space-y-2 mb-3">
+                  {voiceSamples.map((sample, i) => (
+                    <div key={i} className="flex items-start gap-2 p-2 bg-white/5 rounded-lg text-xs text-muted-foreground">
+                      <span className="flex-1 whitespace-pre-wrap">{sample}</span>
+                      <button
+                        type="button"
+                        onClick={() => setVoiceSamples((prev) => prev.filter((_, j) => j !== i))}
+                        className="text-destructive hover:text-destructive/80 shrink-0 mt-0.5"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <textarea
+                    value={voiceInput}
+                    onChange={(e) => setVoiceInput(e.target.value)}
+                    placeholder="Collez un exemple de post, tweet, ou texte de votre marque..."
+                    className="flex-1 h-20 p-3 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!voiceInput.trim()) return;
+                    setVoiceSamples((prev) => [...prev, voiceInput.trim()]);
+                    setVoiceInput("");
+                  }}
+                  disabled={!voiceInput.trim()}
+                  className="mt-2 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  + Ajouter cet exemple
+                </button>
               </div>
             </div>
           </div>

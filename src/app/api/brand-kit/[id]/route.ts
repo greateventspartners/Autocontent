@@ -64,6 +64,7 @@ export async function PUT(
         ...(body.fonts !== undefined && { fonts: body.fonts as Prisma.InputJsonValue }),
         ...(body.toneOfVoice !== undefined && { toneOfVoice: String(body.toneOfVoice) }),
         ...(body.doAndDonts !== undefined && { doAndDonts: String(body.doAndDonts) }),
+        ...(body.voiceSamples !== undefined && { voiceSamples: body.voiceSamples as Prisma.InputJsonValue }),
       },
     });
 
