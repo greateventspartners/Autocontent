@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { CheckCircle, XCircle, MessageSquare, Link as LinkIcon, AlertCircle, Share2 } from "lucide-react";
+import { CheckCircle, XCircle, MessageSquare, Link as LinkIcon, AlertCircle, Share2, Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type ApprovalPost = {
@@ -15,6 +15,13 @@ type ApprovalPost = {
   content?: { sourceIdea: string; campaign?: { title: string } };
 };
 
+type Comment = {
+  id: string;
+  text: string;
+  createdAt: string;
+  user: { id: string; name: string | null; email: string };
+};
+
 type Tab = "pending" | "approved" | "rejected";
 
 export default function ApprovalsPage() {
@@ -25,6 +32,10 @@ export default function ApprovalsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [publishLoading, setPublishLoading] = useState<string | null>(null);
   const [clientCopied, setClientCopied] = useState(false);
+  const [comments, setComments] = useState<Record<string, Comment[]>>({});
+  const [commentText, setCommentText] = useState<Record<string, string>>({});
+  const [commentLoading, setCommentLoading] = useState<string | null>(null);
+  const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
 
   const fetchPosts = (status: string) => {
     setLoading(true);
@@ -62,6 +73,37 @@ export default function ApprovalsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPosts(statusMap[activeTab]);
   }, [activeTab]);
+
+  const fetchComments = async (postId: string) => {
+    try {
+      const res = await fetch(`/api/posts/${postId}/comments`);
+      const data = (await res.json()) as { comments?: Comment[] };
+      if (data.comments) setComments((prev) => ({ ...prev, [postId]: data.comments! }));
+    } catch { /* ignore */ }
+  };
+
+  const addComment = async (postId: string) => {
+    const text = commentText[postId]?.trim();
+    if (!text) return;
+    setCommentLoading(postId);
+    try {
+      const res = await fetch(`/api/posts/${postId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = (await res.json()) as { comment?: Comment; error?: string };
+      if (!res.ok) throw new Error(data.error || "Erreur");
+      if (data.comment) {
+        setComments((prev) => ({ ...prev, [postId]: [...(prev[postId] || []), data.comment!] }));
+        setCommentText((prev) => ({ ...prev, [postId]: "" }));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur commentaire");
+    } finally {
+      setCommentLoading(null);
+    }
+  };
 
   const handleAction = async (id: string, newStatus: string) => {
     setActionLoading(id);
@@ -244,13 +286,54 @@ export default function ApprovalsPage() {
                   <p className="text-sm text-muted-foreground mb-6">Créé par IA Copilot</p>
 
                   <div className="flex-1 flex flex-col gap-4">
-                    <div className="bg-black/20 p-4 rounded-xl text-sm text-muted-foreground italic flex items-center gap-2 border border-white/5">
-                      <MessageSquare size={16} />
-                      Aucun commentaire pour le moment.
+                    <div className="bg-black/20 p-4 rounded-xl border border-white/5">
+                      <button
+                        onClick={() => {
+                          if (!expandedComments[post.id]) fetchComments(post.id);
+                          setExpandedComments((prev) => ({ ...prev, [post.id]: !prev[post.id] }));
+                        }}
+                        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full"
+                      >
+                        <MessageSquare size={16} />
+                        <span>
+                          {comments[post.id]?.length
+                            ? `${comments[post.id].length} commentaire${comments[post.id].length > 1 ? "s" : ""}`
+                            : "Aucun commentaire"}
+                        </span>
+                      </button>
+
+                      {expandedComments[post.id] && (
+                        <div className="mt-3 space-y-2">
+                          {(comments[post.id] || []).map((c) => (
+                            <div key={c.id} className="text-xs bg-white/5 rounded-lg p-2.5">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium text-foreground">{c.user.name || c.user.email.split("@")[0]}</span>
+                                <span className="text-muted-foreground/60">{new Date(c.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                              </div>
+                              <p className="text-muted-foreground">{c.text}</p>
+                            </div>
+                          ))}
+
+                          <div className="flex gap-2 mt-2">
+                            <input
+                              type="text"
+                              value={commentText[post.id] || ""}
+                              onChange={(e) => setCommentText((prev) => ({ ...prev, [post.id]: e.target.value }))}
+                              onKeyDown={(e) => { if (e.key === "Enter") addComment(post.id); }}
+                              placeholder="Ajouter un commentaire..."
+                              className="flex-1 p-2 bg-white/5 border border-white/10 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
+                            />
+                            <button
+                              onClick={() => addComment(post.id)}
+                              disabled={commentLoading === post.id || !commentText[post.id]?.trim()}
+                              className="p-2 bg-primary/20 text-primary rounded-lg hover:bg-primary/30 transition-colors disabled:opacity-50"
+                            >
+                              <Send size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <button className="text-sm text-primary font-medium text-left hover:underline">
-                      + Ajouter un commentaire
-                    </button>
                   </div>
 
                 {activeTab === "pending" && (

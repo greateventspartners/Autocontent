@@ -22,6 +22,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
   const calendar = searchParams.get("calendar") === "true";
+  const platform = searchParams.get("platform");
+  const campaignId = searchParams.get("campaignId");
 
   const where: Record<string, unknown> = {
     content: { campaign: { workspaceId } },
@@ -35,10 +37,18 @@ export async function GET(request: Request) {
     where.scheduledAt = { not: null };
   }
 
+  if (platform) {
+    where.platform = platform.toUpperCase();
+  }
+
+  if (campaignId) {
+    where.content = { ...(where.content as Record<string, unknown>), campaignId };
+  }
+
   const posts = await prisma.post.findMany({
     where,
     include: {
-      content: { select: { sourceIdea: true, campaign: { select: { title: true } } } },
+      content: { select: { sourceIdea: true, campaign: { select: { id: true, title: true } } } },
     },
     orderBy: calendar ? { scheduledAt: "asc" } : { updatedAt: "desc" },
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, MoreHorizontal, Plus, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
@@ -28,7 +28,10 @@ interface CalendarPost {
   platform: string;
   scheduledAt: string;
   status: string;
+  content: { campaign: { id: string; title: string } };
 }
+
+type CampaignOption = { id: string; title: string };
 
 const PLATFORM_COLORS: Record<string, string> = {
   linkedin: "bg-blue-600 text-white shadow-blue-500/20",
@@ -57,9 +60,31 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [showFilter, setShowFilter] = useState(false);
+  const [filterPlatform, setFilterPlatform] = useState("");
+  const [filterCampaign, setFilterCampaign] = useState("");
+  const [campaigns, setCampaigns] = useState<CampaignOption[]>([]);
+
+  const PLATFORM_OPTIONS = [
+    { value: "", label: "Toutes les plateformes" },
+    { value: "linkedin", label: "LinkedIn" },
+    { value: "twitter", label: "X / Twitter" },
+    { value: "instagram", label: "Instagram" },
+    { value: "facebook", label: "Facebook" },
+    { value: "tiktok", label: "TikTok" },
+    { value: "pinterest", label: "Pinterest" },
+    { value: "wordpress", label: "WordPress" },
+    { value: "medium", label: "Medium" },
+  ];
 
   useEffect(() => {
-    fetch("/api/posts?calendar=true")
+    const params = new URLSearchParams({ calendar: "true" });
+    if (filterPlatform) params.set("platform", filterPlatform);
+    if (filterCampaign) params.set("campaignId", filterCampaign);
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
+    fetch(`/api/posts?${params}`)
       .then((res) => {
         if (!res.ok) throw new Error("Erreur chargement calendrier");
         return res.json() as Promise<{ posts: CalendarPost[] }>;
@@ -67,7 +92,25 @@ export default function CalendarPage() {
       .then((data) => setPosts(data.posts))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
+  }, [filterPlatform, filterCampaign]);
+
+  useEffect(() => {
+    fetch("/api/campaigns")
+      .then((res) => res.json() as Promise<{ campaigns?: CampaignOption[] }>)
+      .then((data) => setCampaigns(data.campaigns ?? []))
+      .catch(() => {});
   }, []);
+
+  const filterRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setShowFilter(false);
+      }
+    };
+    if (showFilter) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showFilter]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -166,9 +209,58 @@ export default function CalendarPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors">
-            <Filter size={18} />
-          </button>
+          <div ref={filterRef} className="relative">
+            <button
+              onClick={() => setShowFilter(!showFilter)}
+              className={`p-2 rounded-lg transition-colors ${filterPlatform || filterCampaign ? "bg-primary/20 text-primary" : "bg-white/5 border border-white/10 hover:bg-white/10"}`}
+            >
+              <Filter size={18} />
+              {(filterPlatform || filterCampaign) && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary rounded-full" />
+              )}
+            </button>
+            {showFilter && (
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="absolute right-0 top-full mt-2 z-30 w-64 glass-card rounded-xl p-4 space-y-3 border border-white/10 shadow-xl"
+              >
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Plateforme</label>
+                  <select
+                    value={filterPlatform}
+                    onChange={(e) => setFilterPlatform(e.target.value)}
+                    className="w-full p-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  >
+                    {PLATFORM_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Campagne</label>
+                  <select
+                    value={filterCampaign}
+                    onChange={(e) => setFilterCampaign(e.target.value)}
+                    className="w-full p-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  >
+                    <option value="">Toutes les campagnes</option>
+                    {campaigns.map((c) => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
+                </div>
+                {(filterPlatform || filterCampaign) && (
+                  <button
+                    onClick={() => { setFilterPlatform(""); setFilterCampaign(""); }}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Réinitialiser les filtres
+                  </button>
+                )}
+              </motion.div>
+            )}
+          </div>
           <div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-1">
             <button onClick={prevMonth} className="p-1.5 hover:bg-white/10 rounded-md transition-colors"><ChevronLeft size={18} /></button>
             <span className="px-4 font-medium text-sm">{monthNames[month]} {year}</span>
