@@ -1,8 +1,6 @@
 export function getComposerUrl(platform: string, text: string): string {
   const t = encodeURIComponent(text);
   switch (platform.toLowerCase()) {
-    case "twitter":
-      return `https://twitter.com/intent/tweet?text=${t}`;
     case "linkedin":
       return "https://www.linkedin.com/feed/";
     case "instagram":
@@ -19,6 +17,8 @@ export function getComposerUrl(platform: string, text: string): string {
       return "https://medium.com/new-story";
     case "threads":
       return "https://threads.net/";
+    case "youtube":
+      return "https://www.youtube.com";
     default:
       return "https://www.linkedin.com/feed/";
   }

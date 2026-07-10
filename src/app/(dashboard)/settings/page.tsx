@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Settings, Globe, Check, Link2, Users, Copy, UserPlus, AlertCircle, Shield, User, Eye } from "lucide-react";
+import { Settings, Globe, Check, Users, Copy, UserPlus, AlertCircle, Shield, User, Eye } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Platform {
@@ -16,7 +16,6 @@ const platforms: Platform[] = [
   { id: "facebook", name: "Facebook", icon: "f", connected: false, color: "#1877F2" },
   { id: "instagram", name: "Instagram", icon: "ig", connected: false, color: "#E4405F" },
   { id: "linkedin", name: "LinkedIn", icon: "in", connected: false, color: "#0A66C2" },
-  { id: "twitter", name: "X (Twitter)", icon: "X", connected: false, color: "#000000" },
   { id: "tiktok", name: "TikTok", icon: "tt", connected: false, color: "#000000" },
   { id: "youtube", name: "YouTube", icon: "YT", connected: false, color: "#FF0000" },
   { id: "pinterest", name: "Pinterest", icon: "P", connected: false, color: "#BD081C" },
@@ -43,6 +42,30 @@ const roleIcons: Record<string, React.ElementType> = {
   CLIENT: Eye,
 };
 
+const platformOAuthMap: Record<string, string> = {
+  facebook: "/api/auth/facebook",
+  instagram: "/api/auth/facebook",
+  linkedin: "/api/auth/linkedin",
+  tiktok: "/api/auth/tiktok",
+  youtube: "/api/auth/youtube",
+  pinterest: "/api/auth/pinterest",
+  wordpress: "/api/auth/wordpress",
+  medium: "/api/auth/medium",
+  threads: "/api/auth/facebook",
+};
+
+const platformDisconnectMap: Record<string, string> = {
+  facebook: "/api/auth/facebook/disconnect",
+  instagram: "/api/auth/facebook/disconnect",
+  linkedin: "/api/auth/linkedin/disconnect",
+  tiktok: "/api/auth/tiktok/disconnect",
+  youtube: "/api/auth/youtube/disconnect",
+  pinterest: "/api/auth/pinterest/disconnect",
+  wordpress: "/api/auth/wordpress/disconnect",
+  medium: "/api/auth/medium/disconnect",
+  threads: "/api/auth/facebook/disconnect",
+};
+
 export default function SettingsPage() {
   const [platformsState, setPlatformsState] = useState(platforms);
   const [saved, setSaved] = useState(false);
@@ -55,28 +78,67 @@ export default function SettingsPage() {
   const [inviteError, setInviteError] = useState("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
-  const [linkedinUser, setLinkedinUser] = useState<string | null>(null);
-  const [disconnecting, setDisconnecting] = useState(false);
+  const [platformUsers, setPlatformUsers] = useState<Record<string, string | null>>({});
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    let linkedinMessage: string | null = null;
-    if (params.get("linkedin") === "connected") {
-      linkedinMessage = "LinkedIn connecté avec succès !";
-    } else if (params.get("error") === "linkedin_denied") {
-      linkedinMessage = "Connexion LinkedIn annulée";
-    } else if (params.get("error") === "linkedin_failed") {
-      linkedinMessage = "Échec de la connexion LinkedIn";
+
+    const successMessages: Record<string, string> = {
+      facebook: "Facebook connecté avec succès !",
+      instagram: "Instagram connecté avec succès !",
+      linkedin: "LinkedIn connecté avec succès !",
+      tiktok: "TikTok connecté avec succès !",
+      youtube: "YouTube connecté avec succès !",
+      pinterest: "Pinterest connecté avec succès !",
+      wordpress: "WordPress connecté avec succès !",
+      medium: "Medium connecté avec succès !",
+    };
+
+    const errorMessages: Record<string, string> = {
+      facebook_denied: "Connexion Facebook annulée",
+      facebook_failed: "Échec de la connexion Facebook",
+      instagram_denied: "Connexion Instagram annulée",
+      instagram_failed: "Échec de la connexion Instagram",
+      linkedin_denied: "Connexion LinkedIn annulée",
+      linkedin_failed: "Échec de la connexion LinkedIn",
+      tiktok_denied: "Connexion TikTok annulée",
+      tiktok_failed: "Échec de la connexion TikTok",
+      youtube_denied: "Connexion YouTube annulée",
+      youtube_failed: "Échec de la connexion YouTube",
+      pinterest_denied: "Connexion Pinterest annulée",
+      pinterest_failed: "Échec de la connexion Pinterest",
+      wordpress_denied: "Connexion WordPress annulée",
+      wordpress_failed: "Échec de la connexion WordPress",
+      medium_denied: "Connexion Medium annulée",
+      medium_failed: "Échec de la connexion Medium",
+    };
+
+    let notificationMessage: string | null = null;
+
+    for (const [key, msg] of Object.entries(successMessages)) {
+      if (params.get(key) === "connected") {
+        notificationMessage = msg;
+        break;
+      }
     }
+    if (!notificationMessage) {
+      const errorParam = params.get("error");
+      if (errorParam && errorMessages[errorParam]) {
+        notificationMessage = errorMessages[errorParam];
+      }
+    }
+
     const url = new URL(window.location.href);
-    url.searchParams.delete("linkedin");
-    url.searchParams.delete("error");
+    for (const key of [...Object.keys(successMessages), "error"]) {
+      url.searchParams.delete(key);
+    }
     window.history.replaceState({}, "", url.toString());
 
-    if (linkedinMessage) {
+    if (notificationMessage) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setError(linkedinMessage);
-      setTimeout(() => setError(""), 3000);
+      setError(notificationMessage);
+      setTimeout(() => setError(""), 4000);
     }
 
     fetch("/api/workspaces/members")
@@ -91,43 +153,51 @@ export default function SettingsPage() {
     fetch("/api/workspaces/connections")
       .then((res) => res.json() as Promise<{ connections: Array<{ platform: string; platformUserName: string | null }> }>)
       .then((data) => {
-        const li = data.connections.find((c) => c.platform === "linkedin");
-        if (li) {
-          setLinkedinUser(li.platformUserName);
-          setPlatformsState((prev) =>
-            prev.map((p) => (p.id === "linkedin" ? { ...p, connected: true } : p))
-          );
-        }
+        const users: Record<string, string | null> = {};
+        data.connections.forEach((c) => {
+          users[c.platform] = c.platformUserName;
+        });
+        setPlatformUsers(users);
+        setPlatformsState((prev) =>
+          prev.map((p) => ({
+            ...p,
+            connected: !!users[p.id],
+          }))
+        );
       })
       .catch(() => {});
   }, []);
 
   const togglePlatform = (id: string) => {
-    if (id === "linkedin") {
-      if (linkedinUser) {
-        handleLinkedinDisconnect();
-      } else {
-        window.location.assign("/api/auth/linkedin");
+    if (platformUsers[id]) {
+      handleDisconnect(id);
+    } else {
+      const oauthUrl = platformOAuthMap[id];
+      if (oauthUrl) {
+        window.location.assign(oauthUrl);
       }
-      return;
     }
-    setPlatformsState((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, connected: !p.connected } : p))
-    );
   };
 
-  const handleLinkedinDisconnect = async () => {
-    setDisconnecting(true);
+  const handleDisconnect = async (platformId: string) => {
+    setDisconnecting(platformId);
     try {
-      await fetch("/api/auth/linkedin/disconnect", { method: "POST" });
-      setLinkedinUser(null);
+      const disconnectUrl = platformDisconnectMap[platformId];
+      if (disconnectUrl) {
+        await fetch(disconnectUrl, { method: "POST" });
+      }
+      setPlatformUsers((prev) => {
+        const next = { ...prev };
+        delete next[platformId];
+        return next;
+      });
       setPlatformsState((prev) =>
-        prev.map((p) => (p.id === "linkedin" ? { ...p, connected: false } : p))
+        prev.map((p) => (p.id === platformId ? { ...p, connected: false } : p))
       );
     } catch {
-      setError("Erreur lors de la déconnexion LinkedIn");
+      setError(`Erreur lors de la déconnexion ${platformId}`);
     } finally {
-      setDisconnecting(false);
+      setDisconnecting(null);
     }
   };
 
@@ -311,7 +381,7 @@ export default function SettingsPage() {
             Plateformes de publication
           </h3>
           <p className="text-sm text-muted-foreground mb-6">
-            Activez les plateformes sur lesquelles vous souhaitez publier du contenu.
+            Connectez vos comptes pour publier directement depuis Autocontent.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -322,11 +392,12 @@ export default function SettingsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
                 onClick={() => togglePlatform(platform.id)}
+                disabled={disconnecting === platform.id}
                 className={`flex items-center gap-4 p-4 rounded-xl border transition-all text-left ${
                   platform.connected
                     ? "border-primary/40 bg-primary/5"
                     : "border-white/10 dark:border-white/10 bg-white/[0.02] dark:bg-white/[0.02] hover:bg-white/5 dark:hover:bg-white/5"
-                }`}
+                } ${disconnecting === platform.id ? "opacity-60" : ""}`}
               >
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
@@ -337,13 +408,11 @@ export default function SettingsPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">{platform.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {platform.id === "linkedin" && linkedinUser
-                      ? `Connecté en tant que ${linkedinUser}`
+                    {platformUsers[platform.id]
+                      ? `Connecté${platformUsers[platform.id] ? ` — ${platformUsers[platform.id]}` : ""}`
                       : platform.connected
                         ? "Connecté"
-                        : platform.id === "linkedin"
-                          ? "Cliquer pour connecter"
-                          : "Bientôt disponible"}
+                        : "Cliquer pour connecter"}
                   </p>
                 </div>
                 <div
