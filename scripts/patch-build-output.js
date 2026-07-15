@@ -33,47 +33,38 @@ for (const filePath of targets) {
   console.log(`Found instrumentation error in ${filePath}`);
   totalPatched++;
 
-  const regex = /throw\s+Object\.defineProperty\(\s*new\s+Error\(\s*["']An error occurred while loading the instrumentation hook["']/g;
+  const idx = code.indexOf(ERROR_MSG);
+  if (idx < 0) continue;
 
-  let newCode = code.replace(regex, "{/* suppressed instrumentation error */}(void 0) && Object.defineProperty( new Error("An error occurred while loading the instrumentation hook");
-
-  if (newCode !== code) {
-    fs.writeFileSync(filePath, newCode, "utf-8");
-    console.log("  Patched successfully (regex)");
-  } else {
-    console.log("  Could not match throw pattern, trying brute force");
-
-    const idx = code.indexOf(ERROR_MSG);
-    if (idx >= 0) {
-      let throwStart = -1;
-      for (let i = idx - 1; i >= Math.max(0, idx - 200); i--) {
-        const chunk = code.substring(i, i + 5);
-        if (chunk === "throw") {
-          throwStart = i;
-          break;
-        }
-      }
-
-      if (throwStart >= 0) {
-        let endIdx = idx + ERROR_MSG.length;
-        let depth = 0;
-        let foundFirst = false;
-        for (let i = throwStart; i < code.length; i++) {
-          if (code[i] === "(") { depth++; foundFirst = true; }
-          if (code[i] === ")") { depth--; }
-          if (foundFirst && depth === 0) {
-            endIdx = i + 1;
-            break;
-          }
-        }
-        if (endIdx < code.length && code[endIdx] === ";") endIdx++;
-
-        const patched = code.substring(0, throwStart) + "{/* suppressed */}(void 0)" + code.substring(endIdx);
-        fs.writeFileSync(filePath, patched, "utf-8");
-        console.log("  Patched successfully (brute force)");
-      }
+  let throwStart = -1;
+  for (let i = idx - 1; i >= Math.max(0, idx - 300); i--) {
+    if (code.substring(i, i + 5) === "throw") {
+      throwStart = i;
+      break;
     }
   }
+
+  if (throwStart < 0) {
+    console.log("  Could not find 'throw' keyword before error message");
+    continue;
+  }
+
+  let endIdx = idx + ERROR_MSG.length;
+  let depth = 0;
+  let foundFirst = false;
+  for (let i = throwStart; i < code.length; i++) {
+    if (code[i] === "(") { depth++; foundFirst = true; }
+    if (code[i] === ")") { depth--; }
+    if (foundFirst && depth === 0) {
+      endIdx = i + 1;
+      break;
+    }
+  }
+  if (endIdx < code.length && code[endIdx] === ";") endIdx++;
+
+  const patched = code.substring(0, throwStart) + "(void 0)" + code.substring(endIdx);
+  fs.writeFileSync(filePath, patched, "utf-8");
+  console.log(`  Patched: replaced throw statement at char ${throwStart}-${endIdx}`);
 }
 
 if (totalPatched === 0) {
