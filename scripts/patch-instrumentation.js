@@ -37,14 +37,27 @@ for (const relPath of files) {
     continue;
   }
 
-  const simplePattern =
-    /cachedInstrumentationModule\s*=\s*require\([\s\S]*?\)\s*;?/;
+  const cjsPattern =
+    /cachedInstrumentationModule\s*=\s*\(0,.*?\)\(\s*await\s*require\([\s\S]*?\)\s*\)\s*,\s*cachedInstrumentationModule/;
 
-  if (simplePattern.test(code)) {
-    code = code.replace(simplePattern, "cachedInstrumentationModule = null;");
+  if (cjsPattern.test(code)) {
+    code = code.replace(cjsPattern, "cachedInstrumentationModule = null");
     fs.writeFileSync(filePath, code, "utf-8");
     patched++;
-    console.log(`Patched ${relPath} (simple require → null)`);
+    console.log(`Patched ${relPath} (CJS require → null)`);
+    continue;
+  }
+
+  if (code.includes("require") && code.includes("INSTRUMENTATION_HOOK_FILENAME")) {
+    const genericPattern =
+      /cachedInstrumentationModule\s*=\s*[\s\S]*?require\([\s\S]*?INSTRUMENTATION_HOOK_FILENAME[\s\S]*?\)[\s\S]*?cachedInstrumentationModule/;
+
+    if (genericPattern.test(code)) {
+      code = code.replace(genericPattern, "cachedInstrumentationModule = null");
+      fs.writeFileSync(filePath, code, "utf-8");
+      patched++;
+      console.log(`Patched ${relPath} (generic require → null)`);
+    }
   }
 }
 
