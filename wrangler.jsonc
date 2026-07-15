@@ -3,7 +3,6 @@
   "main": ".open-next/worker.js",
   "name": "autocontent",
   "minify": true,
-  "keep_names": false,
   "compatibility_date": "2026-06-26",
   "compatibility_flags": [
     "nodejs_compat"
