@@ -58,6 +58,25 @@ jobs:
           MEDIUM_CLIENT_SECRET: ${{ secrets.MEDIUM_CLIENT_SECRET }}
           MEDIUM_REDIRECT_URI: ${{ secrets.MEDIUM_REDIRECT_URI }}
 
+      - name: Debug instrumentation state
+        run: |
+          echo "=== node_modules patched file ==="
+          grep -n "cachedInstrumentationModule" node_modules/next/dist/esm/server/lib/router-utils/instrumentation-globals.external.js || echo "FILE NOT FOUND"
+          echo ""
+          echo "=== .open-next server-functions instrumentation file ==="
+          find .open-next -name "instrumentation-globals.external.js" -exec grep -n "cachedInstrumentationModule\|require\|INSTRUMENTATION_HOOK_FILENAME" {} + 2>/dev/null || echo "NOT FOUND in .open-next"
+          echo ""
+          echo "=== Does .next/server/instrumentation.js exist? ==="
+          find .open-next -path "*/.next/server/instrumentation.js" -exec echo "EXISTS: {}" \; 2>/dev/null || echo "NOT FOUND"
+          echo ""
+          echo "=== worker.js instrumentation references ==="
+          grep -c "instrumentation" .open-next/worker.js 2>/dev/null || echo "worker.js not found"
+          grep -oP '.{0,80}Dynamic require.{0,80}' .open-next/worker.js 2>/dev/null | head -5 || echo "no dynamic require found"
+          grep -oP '.{0,80}getInstrumentationModule.{0,80}' .open-next/worker.js 2>/dev/null | head -5 || echo "no getInstrumentationModule found"
+          echo ""
+          echo "=== handler.mjs instrumentation references ==="
+          find .open-next -name "handler.mjs" -exec grep -oP '.{0,100}instrumentation.{0,100}' {} + 2>/dev/null | head -10 || echo "no handler.mjs found"
+
       - name: Patch build output (suppress instrumentation error)
         run: node scripts/patch-build-output.js
 
