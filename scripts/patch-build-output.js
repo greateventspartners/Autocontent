@@ -23,70 +23,61 @@ function findFiles(dir, pattern) {
 const targets = findFiles(outputDir, /\.(mjs|js)$/);
 const ERROR_MSG = "An error occurred while loading the instrumentation hook";
 
+let totalPatched = 0;
+
 for (const filePath of targets) {
   let code = fs.readFileSync(filePath, "utf-8");
-  let original = code;
-  let pos = code.indexOf(ERROR_MSG);
 
-  if (pos < 0) continue;
+  if (!code.includes(ERROR_MSG)) continue;
 
   console.log(`Found instrumentation error in ${filePath}`);
+  totalPatched++;
 
-  // Walk backwards to find `throw` (the keyword right before the Object.defineProperty)
-  let throwPos = -1;
-  for (let i = pos; i >= 0; i--) {
-    const snippet = code.substring(i, i + 5);
-    if (snippet === "throw") {
-      // Verify it's actually a throw keyword (not "throw" inside a string or variable)
-      const before = i > 0 ? code[i - 1] : " ";
-      const after = code[i + 5] || " ";
-      if (/\s/.test(before) && /\s/.test(after)) {
-        throwPos = i;
-        break;
+  const regex = /throw\s+Object\.defineProperty\(\s*new\s+Error\(\s*["']An error occurred while loading the instrumentation hook["']/g;
+
+  let newCode = code.replace(regex, "{/* suppressed instrumentation error */}(void 0) && Object.defineProperty( new Error("An error occurred while loading the instrumentation hook");
+
+  if (newCode !== code) {
+    fs.writeFileSync(filePath, newCode, "utf-8");
+    console.log("  Patched successfully (regex)");
+  } else {
+    console.log("  Could not match throw pattern, trying brute force");
+
+    const idx = code.indexOf(ERROR_MSG);
+    if (idx >= 0) {
+      let throwStart = -1;
+      for (let i = idx - 1; i >= Math.max(0, idx - 200); i--) {
+        const chunk = code.substring(i, i + 5);
+        if (chunk === "throw") {
+          throwStart = i;
+          break;
+        }
+      }
+
+      if (throwStart >= 0) {
+        let endIdx = idx + ERROR_MSG.length;
+        let depth = 0;
+        let foundFirst = false;
+        for (let i = throwStart; i < code.length; i++) {
+          if (code[i] === "(") { depth++; foundFirst = true; }
+          if (code[i] === ")") { depth--; }
+          if (foundFirst && depth === 0) {
+            endIdx = i + 1;
+            break;
+          }
+        }
+        if (endIdx < code.length && code[endIdx] === ";") endIdx++;
+
+        const patched = code.substring(0, throwStart) + "{/* suppressed */}(void 0)" + code.substring(endIdx);
+        fs.writeFileSync(filePath, patched, "utf-8");
+        console.log("  Patched successfully (brute force)");
       }
     }
   }
+}
 
-  if (throwPos < 0) {
-    console.log("  Could not find 'throw' before the error message");
-    continue;
-  }
-
-  // Walk forward to find the end of the throw statement (the final ; or ))
-  // Count parentheses to find matching close
-  let parenCount = 0;
-  let endPos = pos;
-  // First, find the beginning of Object.defineProperty
-  let objDefPos = code.indexOf("Object.defineProperty", pos - 80);
-  if (objDefPos < 0 || objDefPos > pos) objDefPos = pos;
-  
-  // Count from objDefPos to find matching closing
-  let started = false;
-  for (let i = objDefPos; i < code.length; i++) {
-    if (code[i] === "(") { parenCount++; started = true; }
-    else if (code[i] === ")") { parenCount--; }
-    if (started && parenCount === 0) {
-      endPos = i;
-      break;
-    }
-  }
-
-  // The end of throw statement is endPos + 1 (the closing ) ) plus optional ;
-  let stmtEnd = endPos + 1;
-  // Skip the )
-  // If next char is ;, include it
-  if (stmtEnd < code.length && code[stmtEnd] === ";") stmtEnd++;
-
-  // Replace the entire throw statement with a no-op
-  const beforeThrow = code.substring(0, throwPos);
-  const afterStmt = code.substring(stmtEnd);
-  
-  code = beforeThrow + "{/* instrumentation hook suppressed on edge */}" + afterStmt;
-
-  if (code !== original) {
-    fs.writeFileSync(filePath, code, "utf-8");
-    console.log("  Patched successfully");
-  }
+if (totalPatched === 0) {
+  console.log("No instrumentation error found in any files");
 }
 
 console.log("Done");
