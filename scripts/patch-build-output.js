@@ -35,36 +35,60 @@ for (const filePath of targets) {
     totalPatches += matches.length;
   }
 
-  // 2. Patch the "Internal Server Error" plain text response to include error details
-  // The pattern in minified Next.js is: .body("Internal Server Error").send()
-  // We want to add error info to a header before sending
-  // Strategy: find "Internal Server Error" near .logError and capture the error
+  // 2. Patch the internal Next.js error handler to expose the actual error
+  // Pattern: this.logError(PROCESS_ERROR),RESP.statusCode=500,RESP.body("Internal Server Error").send()
+  // We replace the ENTIRE statement to capture the error and include it in a header
   if (code.includes('.body("Internal Server Error").send()')) {
-    console.log(`[${relPath}] Found .body("Internal Server Error").send() — patching to expose errors`);
-    // Replace the entire error-handling statement
-    // The pattern is: ...logError(...)),RESP.statusCode=500,RESP.body("Internal Server Error").send()
-    // We add a header with the error details before sending
-    code = code.replace(
-      /(\w+)\.statusCode=500,\1\.body\("Internal Server Error"\)\.send\(\)/g,
-      (_, resp) => {
-        console.log(`  Patching response variable: ${resp}`);
+    console.log(`[${relPath}] Found .body("Internal Server Error").send() — patching to expose error`);
+    
+    // Strategy: replace the body text to include error info
+    // Pattern: ,VAR.statusCode=500,VAR.body("Internal Server Error").send()
+    // Replace with: ,VAR.statusCode=500,VAR.setHeader("x-error-msg",String(ERROR_VAR?.message||ERROR_VAR)),VAR.body("Internal Server Error").send()
+    // We need to capture the error variable from the logError call
+    
+    // First try: match the full statement including logError
+    const fullPattern = /(\w+)\.statusCode=500,\1\.body\("Internal Server Error"\)\.send\(\)/g;
+    const fullMatches = [...code.matchAll(fullPattern)];
+    console.log(`  Found ${fullMatches.length} direct .statusCode=500,...send() pattern(s)`);
+    
+    for (const m of fullMatches) {
+      const resp = m[1];
+      const matchStart = m.index;
+      
+      // Look backward to find the logError call and capture the error variable
+      const before = code.substring(Math.max(0, matchStart - 200), matchStart);
+      
+      // Pattern: logError(...ERROR_VAR)...),RESP.statusCode=500
+      // The error variable is the argument to getProperError or similar
+      const logErrMatch = before.match(/\.logError\(\S+\((\w+)\)\)/);
+      if (logErrMatch) {
+        const errVar = logErrMatch[1];
+        console.log(`  Captured error variable: ${errVar}`);
+        // Replace: add the error message as a header
+        const replacement = `${resp}.statusCode=500,${resp}.setHeader("x-error-msg",String(${errVar}?.message||${errVar})),${resp}.body("Internal Server Error").send()`;
+        code = code.substring(0, matchStart) + replacement + code.substring(matchStart + m[0].length);
+        changed = true;
         totalPatches++;
-        return `${resp}.statusCode=500,${resp}.setHeader("x-error-detail","internal-error-caught"),${resp}.body("Internal Server Error").send()`;
+      } else {
+        // Fallback: just add the header without error details
+        console.log(`  Could not capture error variable, adding marker only`);
+        const replacement = `${resp}.statusCode=500,${resp}.setHeader("x-error-detail","internal-error-caught"),${resp}.body("Internal Server Error").send()`;
+        code = code.substring(0, matchStart) + replacement + code.substring(matchStart + m[0].length);
+        changed = true;
+        totalPatches++;
       }
-    );
-    changed = true;
+    }
   }
 
   // 3. Patch the "Server failed to respond" JSON error to include full error details
-  // Pattern: W.end(JSON.stringify({message:"Server failed to respond.",details:I},null,2))
   if (code.includes('"Server failed to respond."')) {
     console.log(`[${relPath}] Found "Server failed to respond." — patching to include error details`);
     code = code.replace(
-      /(\w+)\.end\(JSON\.stringify\(\{message:"Server failed to respond\.",details:(\w+)\},null,2\)\)/g,
+      /(\w+)\.statusCode=500,\1\.setHeader\("Content-Type","application\/json"\),\1\.end\(JSON\.stringify\(\{message:"Server failed to respond\.",details:(\w+)\},null,2\)\)/g,
       (_, resp, err) => {
         console.log(`  Patching: resp=${resp}, err=${err}`);
         totalPatches++;
-        return `${resp}.end(JSON.stringify({message:"Server failed to respond.",errorMessage:${err}?.message,errorName:${err}?.name,errorStack:${err}?.stack,digest:${err}?.digest},null,2))`;
+        return `${resp}.statusCode=500,${resp}.setHeader("Content-Type","application/json"),${resp}.end(JSON.stringify({message:"Server failed to respond.",errorMessage:${err}?.message,errorName:${err}?.name,errorStack:${err}?.stack,digest:${err}?.digest},null,2))`;
       }
     );
     changed = true;
@@ -73,5 +97,5 @@ for (const filePath of targets) {
   if (changed) fs.writeFileSync(filePath, code, "utf-8");
 }
 
-if (totalPatches === 0) console.log("patch-build-output: no patches applied (patterns not found — may already be patched or code structure changed)");
+if (totalPatches === 0) console.log("patch-build-output: no patches applied (patterns not found)");
 else console.log(`patch-build-output: applied ${totalPatches} patches`);
