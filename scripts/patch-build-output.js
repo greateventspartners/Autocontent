@@ -64,8 +64,7 @@ for (const filePath of targets) {
       if (logErrMatch) {
         const errVar = logErrMatch[1];
         console.log(`  Captured error variable: ${errVar}`);
-        // Replace: add the error message as a header
-        const replacement = `${resp}.statusCode=500,${resp}.setHeader("x-error-msg",String(${errVar}?.message||${errVar})),${resp}.body("Internal Server Error").send()`;
+        const replacement = `${resp}.statusCode=500,${resp}.setHeader("x-error-msg",String(${errVar}?.message||${errVar})),${resp}.body("Error: "+String(${errVar}?.message||${errVar})+"\\nStack: "+String(${errVar}?.stack||"no-stack").substring(0,2000)).send()`;
         code = code.substring(0, matchStart) + replacement + code.substring(matchStart + m[0].length);
         changed = true;
         totalPatches++;
