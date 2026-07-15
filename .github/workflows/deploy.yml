@@ -58,6 +58,9 @@ jobs:
           MEDIUM_CLIENT_SECRET: ${{ secrets.MEDIUM_CLIENT_SECRET }}
           MEDIUM_REDIRECT_URI: ${{ secrets.MEDIUM_REDIRECT_URI }}
 
+      - name: Patch build output (suppress instrumentation error)
+        run: node scripts/patch-build-output.js
+
       - name: Deploy to Cloudflare
         run: npx opennextjs-cloudflare deploy
         env:
