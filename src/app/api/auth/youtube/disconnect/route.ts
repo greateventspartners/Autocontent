@@ -7,9 +7,10 @@ export async function POST() {
     return Response.json({ error: "Non authentifié" }, { status: 401 });
   }
 
-  const workspaceId = await prisma.workspaceMember.findFirst({
+  const member = await prisma.workspaceMember.findFirst({
     where: { userId: session.userId },
-  }).then((m) => m?.workspaceId);
+  });
+  const workspaceId = member?.workspaceId;
 
   if (!workspaceId) {
     return Response.json({ error: "Aucun workspace" }, { status: 404 });

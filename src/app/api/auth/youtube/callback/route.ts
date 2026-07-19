@@ -34,9 +34,10 @@ export async function GET(request: Request) {
     const tokenData = await exchangeYouTubeCodeForToken(code);
     const userInfo = await getYouTubeUserInfo(tokenData.accessToken);
 
-    const workspaceId = await prisma.workspaceMember.findFirst({
+    const member = await prisma.workspaceMember.findFirst({
       where: { userId: session.userId },
-    }).then((m) => m?.workspaceId);
+    });
+    const workspaceId = member?.workspaceId;
 
     if (!workspaceId) {
       return Response.redirect(new URL("/settings?error=no_workspace", request.url));

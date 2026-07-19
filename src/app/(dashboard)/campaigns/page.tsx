@@ -51,7 +51,6 @@ export default function CampaignsPage() {
     }
   }, []);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchCampaigns(); }, [fetchCampaigns]);
 
   const openCreate = () => {
@@ -193,7 +192,7 @@ export default function CampaignsPage() {
                   <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(c.createdAt).toLocaleDateString("fr-FR")}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                 <button
                   onClick={() => openEdit(c)}
                   className="p-2 text-muted-foreground hover:text-foreground hover:bg-white/10 rounded-lg transition-colors"
@@ -301,7 +300,7 @@ export default function CampaignsPage() {
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Couleur</label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {PRESET_COLORS.map((color) => (
                       <button
                         key={color}

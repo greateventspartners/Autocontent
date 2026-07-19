@@ -23,7 +23,7 @@ const navItems = [
   { name: "Campagnes", href: "/campaigns", icon: FolderOpen },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { user } = useUser();
 
@@ -32,7 +32,7 @@ export default function Sidebar() {
     : user?.email[0].toUpperCase() || "?";
 
   return (
-    <div className="w-64 h-screen flex flex-col glass border-r border-white/10 dark:border-white/10 relative z-10 hidden md:flex flex-shrink-0">
+    <div className="w-64 h-screen flex flex-col glass border-r border-white/10 dark:border-white/10 relative z-10 flex-shrink-0">
       <div className="p-6">
         <div className="flex items-center gap-2 mb-8">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary to-purple-600 flex items-center justify-center shadow-lg">
@@ -43,6 +43,7 @@ export default function Sidebar() {
         
           <Link
             href="/copilot"
+            onClick={onNavigate}
             className="w-full mb-8 flex items-center justify-center gap-2 bg-foreground text-background hover:bg-foreground/90 transition-all font-medium py-2.5 px-4 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
           >
             <Plus size={18} />
@@ -57,6 +58,7 @@ export default function Sidebar() {
             <Link
               key={item.name}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative",
                 isActive 
@@ -77,6 +79,7 @@ export default function Sidebar() {
       <div className="p-4 mt-auto">
         <Link
           href="/settings"
+          onClick={onNavigate}
           className="flex items-center gap-3 px-3 py-2.5 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground rounded-xl transition-all duration-200 group"
         >
           <Settings size={20} className="group-hover:rotate-45 transition-transform duration-300" />

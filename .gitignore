@@ -48,6 +48,7 @@ dev.db-journal
 # cloudflare
 .cloudflare
 .open-next/
+.wrangler/
 
 # vercel
 .vercel

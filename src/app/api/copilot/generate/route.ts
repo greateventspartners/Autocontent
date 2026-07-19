@@ -1,5 +1,5 @@
-import { Platform } from "@prisma/client";
-import { generateContent } from "@/lib/gemini";
+import { Platform } from "@/generated/prisma/client";
+import { generateContent, type ImageInput } from "@/lib/gemini";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -57,11 +57,18 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { prompt, platform }: { prompt?: string; platform?: string } = await request.json();
+    const { prompt, platform, image }: { prompt?: string; platform?: string; image?: ImageInput } = await request.json();
 
     if (!prompt || !platform) {
       return Response.json(
         { error: "prompt et platform sont requis" },
+        { status: 400 },
+      );
+    }
+
+    if (image && (!image.data || !image.mimeType)) {
+      return Response.json(
+        { error: "image doit contenir data (base64) et mimeType" },
         { status: 400 },
       );
     }
@@ -75,7 +82,7 @@ export async function POST(request: Request) {
     }
 
     const brandKit = await getBrandKit(workspaceId);
-    const result = await generateContent(prompt, normalized, brandKit ?? undefined);
+    const result = await generateContent(prompt, normalized, brandKit ?? undefined, image);
 
     const campaign = await getOrCreateDefaultCampaign(workspaceId);
 

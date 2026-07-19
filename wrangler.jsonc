@@ -16,5 +16,14 @@
       "binding": "WORKER_SELF_REFERENCE",
       "service": "autocontent"
     }
-  ]
+  ],
+  "rules": [
+    {
+      "type": "CompiledWasm",
+      "globs": ["**/*.wasm"]
+    }
+  ],
+  "triggers": {
+    "crons": ["* * * * *"]
+  }
 }

@@ -38,28 +38,24 @@ export async function POST(request: Request) {
       return Response.json({ error: "Vous êtes déjà membre" }, { status: 409 });
     }
 
-    const member = await prisma.$transaction(async (tx) => {
-      const newMember = await tx.workspaceMember.create({
-        data: {
-          userId: session.userId,
-          workspaceId: invite.workspaceId,
-          role: invite.role,
-        },
-      });
+    const newMember = await prisma.workspaceMember.create({
+      data: {
+        userId: session.userId,
+        workspaceId: invite.workspaceId,
+        role: invite.role,
+      },
+    });
 
-      await tx.invitation.delete({
-        where: { id: invite.id },
-      });
-
-      return newMember;
+    await prisma.invitation.delete({
+      where: { id: invite.id },
     });
 
     return Response.json({
       success: true,
       member: {
-        id: member.id,
-        role: member.role,
-        workspaceId: member.workspaceId,
+        id: newMember.id,
+        role: newMember.role,
+        workspaceId: newMember.workspaceId,
       },
     });
   } catch (error) {

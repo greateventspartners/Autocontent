@@ -136,7 +136,6 @@ export default function SettingsPage() {
     window.history.replaceState({}, "", url.toString());
 
     if (notificationMessage) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError(notificationMessage);
       setTimeout(() => setError(""), 4000);
     }
@@ -315,7 +314,7 @@ export default function SettingsPage() {
               Inviter un membre
             </h4>
 
-            <div className="flex gap-3 mb-3">
+            <div className="flex flex-col sm:flex-row gap-3 mb-3">
               <input
                 type="email"
                 value={inviteEmail}

@@ -18,7 +18,6 @@ function ResetPasswordForm() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!token) setError("Lien de réinitialisation invalide");
   }, [token]);
 

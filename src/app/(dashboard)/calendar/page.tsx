@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, MoreHorizontal, Plus, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, Plus, AlertCircle, List, Grid3x3 } from "lucide-react";
 import { motion } from "framer-motion";
 
 type Platform = "linkedin" | "twitter" | "instagram" | "facebook" | "tiktok" | "pinterest" | "wordpress" | "medium";
@@ -55,6 +55,17 @@ const PLATFORM_ICONS: Record<string, string> = {
   medium: "M",
 };
 
+const PLATFORM_LABELS: Record<string, string> = {
+  linkedin: "LinkedIn",
+  twitter: "X",
+  instagram: "Instagram",
+  facebook: "Facebook",
+  tiktok: "TikTok",
+  pinterest: "Pinterest",
+  wordpress: "WordPress",
+  medium: "Medium",
+};
+
 export default function CalendarPage() {
   const [posts, setPosts] = useState<CalendarPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +75,7 @@ export default function CalendarPage() {
   const [filterPlatform, setFilterPlatform] = useState("");
   const [filterCampaign, setFilterCampaign] = useState("");
   const [campaigns, setCampaigns] = useState<CampaignOption[]>([]);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const PLATFORM_OPTIONS = [
     { value: "", label: "Toutes les plateformes" },
@@ -82,7 +94,6 @@ export default function CalendarPage() {
     if (filterPlatform) params.set("platform", filterPlatform);
     if (filterCampaign) params.set("campaignId", filterCampaign);
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     fetch(`/api/posts?${params}`)
       .then((res) => {
@@ -117,7 +128,7 @@ export default function CalendarPage() {
 
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
-  const startPadding = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // Monday first
+  const startPadding = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
   const daysInMonth = lastDay.getDate();
   const totalCells = Math.ceil((startPadding + daysInMonth) / 7) * 7;
 
@@ -131,14 +142,10 @@ export default function CalendarPage() {
 
   const buildCalendar = (): DayData[] => {
     const days: DayData[] = [];
-
-    // Previous month padding
     const prevLastDay = new Date(year, month, 0).getDate();
     for (let i = startPadding - 1; i >= 0; i--) {
       days.push({ date: prevLastDay - i, isCurrentMonth: false, posts: [] });
     }
-
-    // Current month
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       const dayPosts: Post[] = posts
@@ -150,27 +157,26 @@ export default function CalendarPage() {
           time: p.scheduledAt ? p.scheduledAt.split("T")[1]?.slice(0, 5) || "" : "",
           status: p.status,
         }));
-
-      days.push({
-        date: d,
-        isCurrentMonth: true,
-        isToday: isToday(d),
-        posts: dayPosts,
-      });
+      days.push({ date: d, isCurrentMonth: true, isToday: isToday(d), posts: dayPosts });
     }
-
-    // Next month padding
     const remaining = totalCells - days.length;
     for (let d = 1; d <= remaining; d++) {
       days.push({ date: d, isCurrentMonth: false, posts: [] });
     }
-
     return days;
   };
 
   const weekDays = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
   const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
   const calendarDays = buildCalendar();
+
+  const listPosts = posts
+    .filter((p) => {
+      if (!p.scheduledAt) return false;
+      const d = new Date(p.scheduledAt);
+      return d.getFullYear() === year && d.getMonth() === month;
+    })
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 
   if (loading) {
     return (
@@ -196,19 +202,36 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="h-full flex flex-col gap-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-primary/10 text-primary rounded-xl">
-            <CalendarIcon size={24} />
+    <div className="h-full flex flex-col gap-4 md:gap-6">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 md:p-3 bg-primary/10 text-primary rounded-xl">
+              <CalendarIcon size={22} />
+            </div>
+            <div>
+              <h2 className="text-xl md:text-2xl font-bold tracking-tight">Calendrier Éditorial</h2>
+              <p className="text-muted-foreground text-xs md:text-sm">Gérez et planifiez vos publications.</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Calendrier Éditorial</h2>
-            <p className="text-muted-foreground text-sm">Gérez et planifiez vos publications cross-canal.</p>
+
+          <div className="flex items-center gap-2 md:hidden">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`p-2 rounded-lg transition-colors ${viewMode === "grid" ? "bg-primary/20 text-primary" : "bg-white/5 border border-white/10"}`}
+            >
+              <Grid3x3 size={16} />
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`p-2 rounded-lg transition-colors ${viewMode === "list" ? "bg-primary/20 text-primary" : "bg-white/5 border border-white/10"}`}
+            >
+              <List size={16} />
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <div ref={filterRef} className="relative">
             <button
               onClick={() => setShowFilter(!showFilter)}
@@ -223,7 +246,7 @@ export default function CalendarPage() {
               <motion.div
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="absolute right-0 top-full mt-2 z-30 w-64 glass-card rounded-xl p-4 space-y-3 border border-white/10 shadow-xl"
+                className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 z-30 w-64 glass-card rounded-xl p-4 space-y-3 border border-white/10 shadow-xl"
               >
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Plateforme</label>
@@ -261,72 +284,119 @@ export default function CalendarPage() {
               </motion.div>
             )}
           </div>
+
           <div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-1">
             <button onClick={prevMonth} className="p-1.5 hover:bg-white/10 rounded-md transition-colors"><ChevronLeft size={18} /></button>
-            <span className="px-4 font-medium text-sm">{monthNames[month]} {year}</span>
+            <span className="px-2 md:px-4 font-medium text-xs md:text-sm whitespace-nowrap">{monthNames[month]} {year}</span>
             <button onClick={nextMonth} className="p-1.5 hover:bg-white/10 rounded-md transition-colors"><ChevronRight size={18} /></button>
           </div>
-          <button onClick={today} className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-medium hover:bg-white/10 transition-colors">
+
+          <button onClick={today} className="px-3 py-1.5 md:px-4 md:py-2 bg-white/5 border border-white/10 rounded-lg text-xs md:text-sm font-medium hover:bg-white/10 transition-colors">
             Aujourd&apos;hui
           </button>
+
           <Link
             href="/copilot"
-            className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/25 font-medium text-sm flex items-center gap-2"
+            className="px-3 py-1.5 md:px-4 md:py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/25 font-medium text-xs md:text-sm flex items-center gap-1.5"
           >
-            <Plus size={16} /> Créer
+            <Plus size={14} /> <span className="hidden sm:inline">Créer</span>
           </Link>
         </div>
       </div>
 
-      <div className="flex-1 glass-card rounded-2xl flex flex-col overflow-hidden border border-white/10 relative">
-        <div className="grid grid-cols-7 border-b border-white/10 bg-white/[0.02]">
-          {weekDays.map(day => (
-            <div key={day} className="py-3 text-center text-sm font-medium text-muted-foreground border-r border-white/10 last:border-0">
-              {day}
-            </div>
-          ))}
-        </div>
-
-        <div className="flex-1 grid grid-cols-7 auto-rows-fr bg-black/20">
-          {calendarDays.slice(0, 42).map((day, idx) => (
-            <div
-              key={idx}
-              className={`p-2 border-r border-b border-white/5 relative group transition-colors hover:bg-white/[0.02] ${!day.isCurrentMonth ? 'opacity-40 bg-black/20' : ''} ${day.isToday ? 'bg-primary/5' : ''}`}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <span className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full ${day.isToday ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-foreground'}`}>
-                  {day.date}
-                </span>
-                <button className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-foreground transition-opacity">
-                  <MoreHorizontal size={14} />
-                </button>
+      {viewMode === "list" ? (
+        <div className="flex-1 glass-card rounded-2xl flex flex-col overflow-hidden border border-white/10">
+          <div className="flex-1 overflow-y-auto">
+            {listPosts.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">
+                Aucune publication planifiée ce mois.
               </div>
-
-              <div className="space-y-1.5">
-                {day.posts.slice(0, 3).map(post => {
-                  const color = PLATFORM_COLORS[post.platform] || "bg-gray-500 text-white";
-                  const icon = PLATFORM_ICONS[post.platform] || "?";
+            ) : (
+              <div className="divide-y divide-white/5">
+                {listPosts.map((post) => {
+                  const color = PLATFORM_COLORS[post.platform.toLowerCase()] || "bg-gray-500 text-white";
+                  const icon = PLATFORM_ICONS[post.platform.toLowerCase()] || "?";
+                  const d = new Date(post.scheduledAt);
+                  const dayNum = d.getDate();
+                  const time = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
                   return (
-                    <motion.div
-                      key={post.id}
-                      layout
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className={`px-2 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 shadow-sm ${color}`}
-                    >
-                      <span className="font-bold opacity-80 text-[10px] uppercase">{icon}</span>
-                      <span className="truncate">{post.time} {post.title}</span>
-                    </motion.div>
+                    <div key={post.id} className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors">
+                      <div className="w-10 h-10 rounded-lg bg-white/5 flex flex-col items-center justify-center flex-shrink-0">
+                        <span className="text-[10px] text-muted-foreground leading-none">{weekDays[(d.getDay() + 6) % 7]}</span>
+                        <span className="text-sm font-bold leading-tight">{dayNum}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{post.sourceIdea}</p>
+                        <p className="text-xs text-muted-foreground">{time}</p>
+                      </div>
+                      <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase flex-shrink-0 ${color}`}>
+                        {icon}
+                      </span>
+                    </div>
                   );
                 })}
-                {day.posts.length > 3 && (
-                  <span className="text-[10px] text-muted-foreground pl-1">+{day.posts.length - 3} autres</span>
-                )}
               </div>
-            </div>
-          ))}
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex-1 glass-card rounded-2xl flex flex-col overflow-hidden border border-white/10 relative">
+          <div className="hidden md:grid grid-cols-7 border-b border-white/10 bg-white/[0.02]">
+            {weekDays.map(day => (
+              <div key={day} className="py-3 text-center text-sm font-medium text-muted-foreground border-r border-white/10 last:border-0">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          <div className="md:hidden grid grid-cols-7 border-b border-white/10 bg-white/[0.02]">
+            {weekDays.map(day => (
+              <div key={day} className="py-2 text-center text-[10px] font-medium text-muted-foreground border-r border-white/10 last:border-0">
+                {day.slice(0, 2)}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex-1 grid grid-cols-7 auto-rows-fr bg-black/20">
+            {calendarDays.slice(0, 42).map((day, idx) => (
+              <div
+                key={idx}
+                className={`p-1 md:p-2 border-r border-b border-white/5 relative group transition-colors hover:bg-white/[0.02] ${!day.isCurrentMonth ? 'opacity-40 bg-black/20' : ''} ${day.isToday ? 'bg-primary/5' : ''}`}
+              >
+                <div className="flex justify-between items-start mb-1 md:mb-2">
+                  <span className={`text-xs md:text-sm font-medium w-5 h-5 md:w-7 md:h-7 flex items-center justify-center rounded-full ${day.isToday ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-foreground'}`}>
+                    {day.date}
+                  </span>
+                </div>
+
+                <div className="space-y-0.5 md:space-y-1.5">
+                  {day.posts.slice(0, 2).map(post => {
+                    const color = PLATFORM_COLORS[post.platform] || "bg-gray-500 text-white";
+                    const icon = PLATFORM_ICONS[post.platform] || "?";
+                    return (
+                      <motion.div
+                        key={post.id}
+                        layout
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className={`px-1 md:px-2 py-0.5 md:py-1.5 rounded-md text-[9px] md:text-xs font-medium flex items-center gap-1 shadow-sm ${color}`}
+                      >
+                        <span className="font-bold opacity-80 uppercase hidden md:inline">{icon}</span>
+                        <span className="truncate">{post.title}</span>
+                      </motion.div>
+                    );
+                  })}
+                  {day.posts.length > 2 && (
+                    <span className="text-[8px] md:text-[10px] text-muted-foreground pl-0.5 md:pl-1">
+                      +{day.posts.length - 2}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

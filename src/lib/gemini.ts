@@ -2,8 +2,8 @@ import { GoogleGenerativeAI, type GenerateContentRequest } from "@google/generat
 
 function getGenAI() {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY est requise. Définissez-la dans .env ou via Cloudflare Dashboard.");
+  if (!apiKey || apiKey === "votre-cle-api-gemini") {
+    return null;
   }
   return new GoogleGenerativeAI(apiKey);
 }
@@ -109,6 +109,11 @@ Format :
   },
 };
 
+export type ImageInput = {
+  data: string;
+  mimeType: string;
+};
+
 export async function generateContent(
   prompt: string,
   platform: string,
@@ -118,6 +123,7 @@ export async function generateContent(
     keywords?: string;
     voiceSamples?: string[] | null;
   },
+  image?: ImageInput,
 ) {
   const config = platformConfigs[platform];
   if (!config) {
@@ -142,7 +148,26 @@ export async function generateContent(
     });
   }
 
-  const model = getGenAI().getGenerativeModel({
+  if (image) {
+    systemInstruction += `\n\nUne image a été fournie avec cette demande. Analyse-la et intègre-la dans ta réponse si elle est pertinente. Si l'image contient du texte, des produits, un paysage ou un sujet identifiable, décris-la brièvement et utilise cette information pour enrichir le contenu généré.`;
+  }
+
+  const genAI = getGenAI();
+
+  if (!genAI) {
+    console.log(`[Gemini fallback] Plateforme: ${platform}`);
+    console.log(`[Gemini fallback] Prompt: ${prompt}`);
+    if (image) console.log(`[Gemini fallback] Image: ${image.mimeType}`);
+
+    const mockContent = `[Contenu simulé — clé Gemini non configurée]\n\nPlateforme: ${platform}\n\n${prompt.slice(0, 500)}`;
+    return {
+      content: mockContent,
+      platform,
+      model: "mock",
+    };
+  }
+
+  const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
     systemInstruction,
     generationConfig: {
@@ -153,26 +178,50 @@ export async function generateContent(
     },
   });
 
+  const parts: GenerateContentRequest["contents"][0]["parts"] = [
+    { text: prompt },
+  ];
+
+  if (image) {
+    parts.push({
+      inlineData: {
+        data: image.data,
+        mimeType: image.mimeType,
+      },
+    });
+  }
+
   const request: GenerateContentRequest = {
     contents: [
       {
         role: "user",
-        parts: [{ text: prompt }],
+        parts,
       },
     ],
   };
 
-  const result = await model.generateContent(request);
-  const response = result.response;
-  const text = response.text();
+  try {
+    const result = await model.generateContent(request);
+    const response = result.response;
+    const text = response.text();
 
-  if (!text) {
-    throw new Error("Gemini n'a pas généré de contenu");
+    if (!text) {
+      throw new Error("Gemini n'a pas généré de contenu");
+    }
+
+    return {
+      content: text,
+      platform,
+      model: "gemini-2.0-flash",
+    };
+  } catch (err: unknown) {
+    console.error(`[Gemini] Erreur API:`, err);
+    console.log(`[Gemini fallback] Mode simulation — Plateforme: ${platform}`);
+    const mockContent = `[Contenu simulé — Gemini indisponible]\n\nPlateforme: ${platform}\n\n${prompt.slice(0, 500)}`;
+    return {
+      content: mockContent,
+      platform,
+      model: "mock",
+    };
   }
-
-  return {
-    content: text,
-    platform,
-    model: "gemini-2.0-flash",
-  };
 }

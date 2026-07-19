@@ -29,55 +29,51 @@ export async function POST(request: Request) {
 
     const hashedPassword = await hashPassword(password);
 
-    const user = await prisma.$transaction(async (tx) => {
-      const newUser = await tx.user.create({
-        data: {
-          name: name || null,
-          email,
-          password: hashedPassword,
-        },
-      });
-
-      const workspace = await tx.workspace.create({
-        data: {
-          name: name ? `Espace de ${name}` : "Mon Workspace",
-        },
-      });
-
-      await tx.workspaceMember.create({
-        data: {
-          userId: newUser.id,
-          workspaceId: workspace.id,
-          role: "OWNER",
-        },
-      });
-
-      await tx.campaign.create({
-        data: {
-          workspaceId: workspace.id,
-          title: "Copilot",
-          description: "Contenus générés par le Copilot IA",
-          colorCode: "#6366f1",
-        },
-      });
-
-      return newUser;
+    const newUser = await prisma.user.create({
+      data: {
+        name: name || null,
+        email,
+        password: hashedPassword,
+      },
     });
 
-    await createSession(user.id, user.email);
+    const workspace = await prisma.workspace.create({
+      data: {
+        name: name ? `Espace de ${name}` : "Mon Workspace",
+      },
+    });
+
+    await prisma.workspaceMember.create({
+      data: {
+        userId: newUser.id,
+        workspaceId: workspace.id,
+        role: "OWNER",
+      },
+    });
+
+    await prisma.campaign.create({
+      data: {
+        workspaceId: workspace.id,
+        title: "Copilot",
+        description: "Contenus générés par le Copilot IA",
+        colorCode: "#6366f1",
+      },
+    });
+
+    await createSession(newUser.id, newUser.email);
 
     return Response.json({
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
       },
     });
-  } catch (error) {
-    console.error("Register error:", error);
+  } catch (error: any) {
+    console.error("Register error:", error?.message, error?.name, error?.stack?.substring(0, 500));
     return Response.json(
-      { error: "Erreur lors de l'inscription" },
+      { error: "Erreur lors de l'inscription", detail: error?.message },
       { status: 500 }
     );
   }

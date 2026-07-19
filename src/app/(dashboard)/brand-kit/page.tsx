@@ -217,7 +217,7 @@ export default function BrandKitPage() {
             Import Magique depuis un site web
           </h3>
           <p className="text-sm text-muted-foreground mb-4">Entrez l&apos;URL de votre site web pour que notre IA extraie automatiquement vos couleurs, polices et votre style éditorial.</p>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
               <input

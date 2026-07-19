@@ -1,8 +1,20 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ArrowUpRight, TrendingUp, FileText, CheckCircle2, Clock, AlertCircle, Loader2 } from "lucide-react";
+import { TrendingUp, FileText, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { motion, Variants } from "framer-motion";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 type Activity = {
   id: string;
@@ -12,6 +24,10 @@ type Activity = {
   time: string;
 };
 
+type ChartPlatform = { platform: string; count: number };
+type ChartStatus = { status: string; count: number };
+type ChartDaily = { day: string; count: number };
+
 type DashboardData = {
   stats: {
     publishedThisMonth: number;
@@ -20,6 +36,11 @@ type DashboardData = {
     totalPosts: number;
   };
   recentActivity: Activity[];
+  charts: {
+    platformData: ChartPlatform[];
+    statusData: ChartStatus[];
+    dailyData: ChartDaily[];
+  };
 };
 
 const statusConfig: Record<string, { icon: typeof CheckCircle2; color: string }> = {
@@ -64,13 +85,38 @@ const itemVariants: Variants = {
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
 };
 
+const PIE_COLORS = ["#3b82f6", "#10b981", "#a855f7", "#f59e0b", "#ef4444", "#ec4899", "#06b6d4", "#6366f1"];
+
+const platformLabels: Record<string, string> = {
+  linkedin: "LinkedIn",
+  twitter: "X",
+  instagram: "Instagram",
+  facebook: "Facebook",
+  tiktok: "TikTok",
+  pinterest: "Pinterest",
+  wordpress: "WordPress",
+  medium: "Medium",
+  youtube: "YouTube",
+};
+
+const statusLabelsBar: Record<string, string> = {
+  PUBLISHED: "Publié",
+  SCHEDULED: "Planifié",
+  PENDING_APPROVAL: "En attente",
+  DRAFT: "Brouillon",
+  APPROVED: "Approuvé",
+  FAILED: "Échoué",
+};
+
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [range, setRange] = useState<"7" | "30">("7");
 
   useEffect(() => {
-    fetch("/api/dashboard/stats")
+    setLoading(true);
+    fetch(`/api/dashboard/stats?range=${range}`)
       .then((res) => {
         if (!res.ok) throw new Error("Erreur chargement dashboard");
         return res.json() as Promise<DashboardData>;
@@ -78,7 +124,7 @@ export default function Dashboard() {
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [range]);
 
   if (loading) {
     return (
@@ -132,7 +178,7 @@ export default function Dashboard() {
     >
       <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Vue d&apos;ensemble</h2>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Vue d&apos;ensemble</h2>
           <p className="text-muted-foreground mt-1">Voici ce qui se passe avec vos contenus aujourd&apos;hui.</p>
         </div>
       </motion.div>
@@ -147,7 +193,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="relative z-10">
-              <h3 className="text-4xl font-bold mb-1">{stat.value}</h3>
+              <h3 className="text-3xl md:text-4xl font-bold mb-1">{stat.value}</h3>
               <p className="text-muted-foreground text-sm font-medium">{stat.title}</p>
             </div>
           </div>
@@ -155,23 +201,119 @@ export default function Dashboard() {
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <motion.div variants={itemVariants} className="lg:col-span-2 glass-card rounded-2xl p-6 min-h-[400px] flex flex-col">
+        <motion.div variants={itemVariants} className="lg:col-span-2 glass-card rounded-2xl p-6">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold">Performance des Canaux</h3>
-            <select className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/50">
-              <option>7 derniers jours</option>
-              <option>30 derniers jours</option>
+            <h3 className="text-xl font-bold">Publications par Jour</h3>
+            <select
+              value={range}
+              onChange={(e) => setRange(e.target.value as "7" | "30")}
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              <option value="7">7 derniers jours</option>
+              <option value="30">30 derniers jours</option>
             </select>
           </div>
-          <div className="flex-1 border-2 border-dashed border-white/10 rounded-xl flex items-center justify-center bg-white/[0.02]">
-            <p className="text-muted-foreground flex items-center gap-2">
-              <TrendingUp size={20} />
-              Graphique d&apos;engagement (Espace réservé)
-            </p>
+          <div className="h-[300px]">
+            {data!.charts.dailyData.length === 0 ? (
+              <div className="h-full border-2 border-dashed border-white/10 rounded-xl flex items-center justify-center bg-white/[0.02]">
+                <p className="text-muted-foreground flex items-center gap-2">
+                  <TrendingUp size={20} />
+                  Aucune donnée pour cette période
+                </p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data!.charts.dailyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                  <XAxis
+                    dataKey="day"
+                    tickFormatter={(d: string) => {
+                      const date = new Date(d);
+                      return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+                    }}
+                    stroke="rgba(255,255,255,0.4)"
+                    fontSize={12}
+                  />
+                  <YAxis stroke="rgba(255,255,255,0.4)" fontSize={12} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "rgba(15,23,42,0.95)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 12,
+                      color: "#fff",
+                    }}
+                    labelFormatter={(label) =>
+                      new Date(String(label)).toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long" })
+                    }
+                  />
+                  <Bar dataKey="count" name="Publications" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </motion.div>
 
         <motion.div variants={itemVariants} className="glass-card rounded-2xl p-6 flex flex-col">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold">Par Plateforme</h3>
+          </div>
+          <div className="flex-1 flex items-center justify-center">
+            {data!.charts.platformData.length === 0 ? (
+              <p className="text-muted-foreground text-sm italic">Aucune donnée.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie
+                    data={data!.charts.platformData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={90}
+                    paddingAngle={3}
+                    dataKey="count"
+                    nameKey="platform"
+                  >
+                    {data!.charts.platformData.map((entry, index) => (
+                      <Cell key={entry.platform} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "rgba(15,23,42,0.95)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 12,
+                      color: "#fff",
+                    }}
+                    formatter={(value, name) => [
+                      `${value} posts`,
+                      platformLabels[String(name)] || String(name),
+                    ]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          {data!.charts.platformData.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {data!.charts.platformData.map((item, i) => (
+                <div key={item.platform} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
+                    />
+                    <span className="text-muted-foreground">{platformLabels[item.platform] || item.platform}</span>
+                  </div>
+                  <span className="font-medium">{item.count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <motion.div variants={itemVariants} className="lg:col-span-2 glass-card rounded-2xl p-6">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold">Activité Récente</h3>
           </div>
@@ -201,6 +343,71 @@ export default function Dashboard() {
               })
             )}
           </div>
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="glass-card rounded-2xl p-6 flex flex-col">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold">Par Statut</h3>
+          </div>
+          <div className="flex-1 flex items-center justify-center">
+            {data!.charts.statusData.length === 0 ? (
+              <p className="text-muted-foreground text-sm italic">Aucune donnée.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie
+                    data={data!.charts.statusData.map((s) => ({
+                      ...s,
+                      label: statusLabelsBar[s.status] || s.status,
+                    }))}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={90}
+                    paddingAngle={3}
+                    dataKey="count"
+                    nameKey="label"
+                  >
+                    {data!.charts.statusData.map((entry, index) => (
+                      <Cell
+                        key={entry.status}
+                        fill={
+                          entry.status === "PUBLISHED"
+                            ? "#10b981"
+                            : entry.status === "SCHEDULED"
+                            ? "#3b82f6"
+                            : entry.status === "PENDING_APPROVAL"
+                            ? "#f59e0b"
+                            : entry.status === "FAILED"
+                            ? "#ef4444"
+                            : PIE_COLORS[index % PIE_COLORS.length]
+                        }
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "rgba(15,23,42,0.95)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 12,
+                      color: "#fff",
+                    }}
+                    formatter={(value, name) => [`${value} posts`, name]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          {data!.charts.statusData.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {data!.charts.statusData.map((item) => (
+                <div key={item.status} className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{statusLabelsBar[item.status] || item.status}</span>
+                  <span className="font-medium">{item.count}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </motion.div>
       </div>
     </motion.div>

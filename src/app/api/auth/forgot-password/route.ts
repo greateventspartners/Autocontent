@@ -1,5 +1,6 @@
 import { SignJWT } from "jose";
 import { prisma } from "@/lib/prisma";
+import { sendEmail, buildResetPasswordEmail } from "@/lib/email";
 
 function getJwtSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
@@ -29,13 +30,25 @@ export async function POST(request: Request) {
       .setExpirationTime("1h")
       .sign(getJwtSecret());
 
-    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset-password?token=${resetToken}`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://autocontent.greateventspartners.workers.dev";
+    const resetUrl = `${appUrl}/reset-password?token=${resetToken}`;
 
-    console.log(`[RESET PASSWORD] Lien de réinitialisation pour ${email}:\n${resetUrl}\n`);
+    if (process.env.RESEND_API_KEY) {
+      try {
+        await sendEmail({
+          to: email,
+          subject: "Réinitialisation de votre mot de passe Autocontent",
+          html: buildResetPasswordEmail(resetUrl),
+        });
+      } catch (emailError) {
+        console.error("Failed to send reset email:", emailError);
+      }
+    } else {
+      console.log(`[RESET PASSWORD] Lien de réinitialisation pour ${email}:\n${resetUrl}\n`);
+    }
 
     return Response.json({
       message: "Si un compte existe avec cet email, vous recevrez un lien de réinitialisation.",
-      resetUrl,
     });
   } catch (error) {
     console.error("Forgot password error:", error);

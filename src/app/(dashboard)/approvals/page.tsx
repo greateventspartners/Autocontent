@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { CheckCircle, XCircle, MessageSquare, Link as LinkIcon, AlertCircle, Share2, Send } from "lucide-react";
+import { CheckCircle, XCircle, MessageSquare, Link as LinkIcon, AlertCircle, Share2, Send, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type ApprovalPost = {
@@ -36,6 +36,8 @@ export default function ApprovalsPage() {
   const [commentText, setCommentText] = useState<Record<string, string>>({});
   const [commentLoading, setCommentLoading] = useState<string | null>(null);
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
+  const [scheduleLoading, setScheduleLoading] = useState<string | null>(null);
+  const [scheduleDate, setScheduleDate] = useState<Record<string, string>>({});
 
   const fetchPosts = (status: string) => {
     setLoading(true);
@@ -70,7 +72,6 @@ export default function ApprovalsPage() {
       approved: "APPROVED",
       rejected: "REJECTED",
     };
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPosts(statusMap[activeTab]);
   }, [activeTab]);
 
@@ -151,6 +152,28 @@ export default function ApprovalsPage() {
     }
   };
 
+  const handleSchedule = async (id: string) => {
+    const dateStr = scheduleDate[id];
+    if (!dateStr) return;
+    setScheduleLoading(id);
+    try {
+      const res = await fetch(`/api/posts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduledAt: dateStr, status: "SCHEDULED" }),
+      });
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        throw new Error(data.error || "Erreur");
+      }
+      setPosts((prev) => prev.filter((p) => p.id !== id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur lors de la planification");
+    } finally {
+      setScheduleLoading(null);
+    }
+  };
+
   const tabs: { key: Tab; label: string }[] = [
     { key: "pending", label: "En Attente" },
     { key: "approved", label: "Approuvés" },
@@ -204,12 +227,12 @@ export default function ApprovalsPage() {
         </div>
       )}
 
-      <div className="flex gap-4 border-b border-white/10 pb-4">
+      <div className="flex gap-2 md:gap-4 border-b border-white/10 pb-4 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`font-medium pb-4 -mb-4 px-2 transition-colors ${
+            className={`font-medium pb-4 -mb-4 px-2 transition-colors whitespace-nowrap ${
               activeTab === tab.key
                 ? "text-primary border-b-2 border-primary"
                 : "text-muted-foreground hover:text-foreground"
@@ -352,6 +375,26 @@ export default function ApprovalsPage() {
                       )}
                       Publier maintenant
                     </button>
+
+                    <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                      <div className="flex items-center gap-2 flex-1">
+                        <Clock size={14} className="text-muted-foreground shrink-0" />
+                        <input
+                          type="datetime-local"
+                          value={scheduleDate[post.id] || ""}
+                          onChange={(e) => setScheduleDate((prev) => ({ ...prev, [post.id]: e.target.value }))}
+                          className="flex-1 p-2 bg-white/5 border border-white/10 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
+                        />
+                      </div>
+                      <button
+                        onClick={() => handleSchedule(post.id)}
+                        disabled={scheduleLoading === post.id || !scheduleDate[post.id]}
+                        className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                      >
+                        {scheduleLoading === post.id ? "…" : "Planifier"}
+                      </button>
+                    </div>
+
                     <div className="flex gap-3">
                       <button
                         onClick={() => handleAction(post.id, "REJECTED")}
@@ -386,7 +429,7 @@ export default function ApprovalsPage() {
                 )}
 
                 {activeTab !== "pending" && (
-                  <div className="mt-6">
+                  <div className="mt-6 space-y-3">
                     <button
                       onClick={() => handlePublish(post.id)}
                       disabled={publishLoading === post.id}
@@ -401,6 +444,24 @@ export default function ApprovalsPage() {
                       )}
                       Publier maintenant
                     </button>
+                    <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                      <div className="flex items-center gap-2 flex-1">
+                        <Clock size={14} className="text-muted-foreground shrink-0" />
+                        <input
+                          type="datetime-local"
+                          value={scheduleDate[post.id] || ""}
+                          onChange={(e) => setScheduleDate((prev) => ({ ...prev, [post.id]: e.target.value }))}
+                          className="flex-1 p-2 bg-white/5 border border-white/10 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
+                        />
+                      </div>
+                      <button
+                        onClick={() => handleSchedule(post.id)}
+                        disabled={scheduleLoading === post.id || !scheduleDate[post.id]}
+                        className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                      >
+                        {scheduleLoading === post.id ? "…" : "Planifier"}
+                      </button>
+                    </div>
                   </div>
                 )}
                 </div>

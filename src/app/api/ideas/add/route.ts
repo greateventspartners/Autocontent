@@ -1,4 +1,4 @@
-import { Platform } from "@prisma/client";
+import { Platform } from "@/generated/prisma/client";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 

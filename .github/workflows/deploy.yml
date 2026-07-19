@@ -42,12 +42,12 @@ jobs:
           FACEBOOK_APP_ID: ${{ secrets.FACEBOOK_APP_ID }}
           FACEBOOK_APP_SECRET: ${{ secrets.FACEBOOK_APP_SECRET }}
           FACEBOOK_REDIRECT_URI: ${{ secrets.FACEBOOK_REDIRECT_URI }}
+          INSTAGRAM_APP_ID: ${{ secrets.INSTAGRAM_APP_ID }}
+          INSTAGRAM_APP_SECRET: ${{ secrets.INSTAGRAM_APP_SECRET }}
+          INSTAGRAM_REDIRECT_URI: ${{ secrets.INSTAGRAM_REDIRECT_URI }}
           TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
           TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
           TIKTOK_REDIRECT_URI: ${{ secrets.TIKTOK_REDIRECT_URI }}
-          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
-          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
-          YOUTUBE_REDIRECT_URI: ${{ secrets.YOUTUBE_REDIRECT_URI }}
           PINTEREST_APP_ID: ${{ secrets.PINTEREST_APP_ID }}
           PINTEREST_APP_SECRET: ${{ secrets.PINTEREST_APP_SECRET }}
           PINTEREST_REDIRECT_URI: ${{ secrets.PINTEREST_REDIRECT_URI }}
@@ -57,38 +57,27 @@ jobs:
           MEDIUM_CLIENT_ID: ${{ secrets.MEDIUM_CLIENT_ID }}
           MEDIUM_CLIENT_SECRET: ${{ secrets.MEDIUM_CLIENT_SECRET }}
           MEDIUM_REDIRECT_URI: ${{ secrets.MEDIUM_REDIRECT_URI }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REDIRECT_URI: ${{ secrets.YOUTUBE_REDIRECT_URI }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
 
-      - name: Debug instrumentation state
-        run: |
-          echo "=== node_modules patched file ==="
-          grep -n "cachedInstrumentationModule" node_modules/next/dist/esm/server/lib/router-utils/instrumentation-globals.external.js || echo "FILE NOT FOUND"
-          echo ""
-          echo "=== .open-next server-functions instrumentation file ==="
-          find .open-next -name "instrumentation-globals.external.js" -exec grep -n "cachedInstrumentationModule\|require\|INSTRUMENTATION_HOOK_FILENAME" {} + 2>/dev/null || echo "NOT FOUND in .open-next"
-          echo ""
-          echo "=== Does .next/server/instrumentation.js exist? ==="
-          find .open-next -path "*/.next/server/instrumentation.js" -exec echo "EXISTS: {}" \; 2>/dev/null || echo "NOT FOUND"
-          echo ""
-          echo "=== worker.js instrumentation references ==="
-          grep -c "instrumentation" .open-next/worker.js 2>/dev/null || echo "worker.js not found"
-          grep -oP '.{0,80}Dynamic require.{0,80}' .open-next/worker.js 2>/dev/null | head -5 || echo "no dynamic require found"
-          grep -oP '.{0,80}getInstrumentationModule.{0,80}' .open-next/worker.js 2>/dev/null | head -5 || echo "no getInstrumentationModule found"
-          echo ""
-          echo "=== handler.mjs instrumentation references ==="
-          find .open-next -name "handler.mjs" -exec grep -oP '.{0,100}instrumentation.{0,100}' {} + 2>/dev/null | head -10 || echo "no handler.mjs found"
-
-      - name: Patch build output (suppress instrumentation error)
+      - name: Patch build output (INSTRUMENTATION)
         run: node scripts/patch-build-output.js
 
-      - name: Populate cache
-        run: npx opennextjs-cloudflare populateCache
-        continue-on-error: true
+      - name: Patch build output (Prisma WASM)
+        run: node scripts/patch-prisma-wasm.js
+
+      - name: Deploy to Cloudflare
+        run: npx wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Deploy to Cloudflare (wrangler)
-        run: npx wrangler deploy
+      - name: Set Cloudflare secrets
+        run: |
+          echo "${{ secrets.CRON_SECRET }}" | npx wrangler secret put CRON_SECRET
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

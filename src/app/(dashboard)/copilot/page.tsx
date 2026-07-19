@@ -61,7 +61,6 @@ function CopilotContent() {
 
   useEffect(() => {
     const q = searchParams.get("q");
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (q) setPrompt(q);
   }, [searchParams]);
 
@@ -75,7 +74,14 @@ function CopilotContent() {
 
   const onImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) setImagePreview(URL.createObjectURL(file));
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        setImagePreview(result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleGenerate = useCallback(async () => {
@@ -85,10 +91,18 @@ function CopilotContent() {
     setSavedId(null);
 
     try {
+      let imagePayload: { data: string; mimeType: string } | undefined;
+
+      if (imagePreview) {
+        const base64 = imagePreview.split(",")[1];
+        const mimeType = imagePreview.split(";")[0].split(":")[1];
+        imagePayload = { data: base64, mimeType };
+      }
+
       const res = await fetch("/api/copilot/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, platform: activeTab }),
+        body: JSON.stringify({ prompt, platform: activeTab, image: imagePayload }),
       });
 
       const data: { error?: string; platform?: string; content?: string; contentId?: string; postId?: string } = await res.json();
@@ -316,7 +330,7 @@ function CopilotContent() {
           ))}
         </div>
 
-        <div className="flex-1 p-8 bg-black/20 overflow-y-auto flex justify-center items-start">
+        <div className="flex-1 p-4 md:p-8 bg-black/20 overflow-y-auto flex justify-center items-start">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab + (currentContent ? "-content" : "-empty")}
@@ -349,7 +363,13 @@ function CopilotContent() {
                   <span className="text-gray-400 italic">Entrez un prompt à gauche puis cliquez sur Générer avec Gemini...</span>
                 )}
               </div>
-              {currentContent && (
+              {currentContent && imagePreview && (
+                <div className="w-full bg-gray-100 flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagePreview} alt="Image jointe" className="w-full max-h-64 object-cover" />
+                </div>
+              )}
+              {currentContent && !imagePreview && (
                 <div className="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400">
                   [Espace Média]
                 </div>

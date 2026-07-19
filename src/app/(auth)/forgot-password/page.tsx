@@ -1,14 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { Mail, ArrowLeft, ArrowRight, AlertCircle, LinkIcon } from "lucide-react";
+import { Mail, ArrowLeft, ArrowRight, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
-  const [resetUrl, setResetUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -22,9 +21,8 @@ export default function ForgotPasswordPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const data = (await res.json()) as { error?: string; resetUrl?: string; message?: string };
+      const data = (await res.json()) as { error?: string; message?: string };
       if (!res.ok) throw new Error(data.error || "Erreur");
-      if (data.resetUrl) setResetUrl(data.resetUrl);
       setSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur lors de l'envoi");
@@ -104,19 +102,6 @@ export default function ForgotPasswordPage() {
                 Si un compte existe avec <strong className="text-foreground">{email}</strong>,
                 vous recevrez un email dans quelques instants.
               </p>
-              {resetUrl && (
-                <div className="mt-4 p-3 bg-white/5 border border-white/10 rounded-xl text-left space-y-2">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <LinkIcon size={12} /> Lien de réinitialisation (mode développement) :
-                  </p>
-                  <a
-                    href={resetUrl}
-                    className="block text-xs text-primary hover:underline break-all font-mono"
-                  >
-                    {resetUrl}
-                  </a>
-                </div>
-              )}
               <Link
                 href="/login"
                 className="inline-flex items-center gap-2 text-sm text-primary hover:underline font-medium mt-4"
