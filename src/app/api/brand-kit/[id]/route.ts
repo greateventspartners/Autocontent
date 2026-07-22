@@ -20,7 +20,7 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await getSession();
+  const session = await getSession(_request);
   if (!session) {
     return Response.json({ error: "Non authentifié" }, { status: 401 });
   }
@@ -40,7 +40,7 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await getSession();
+  const session = await getSession(request);
   if (!session) {
     return Response.json({ error: "Non authentifié" }, { status: 401 });
   }
@@ -79,7 +79,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await getSession();
+  const session = await getSession(_request);
   if (!session) {
     return Response.json({ error: "Non authentifié" }, { status: 401 });
   }

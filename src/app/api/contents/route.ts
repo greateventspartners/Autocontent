@@ -9,7 +9,7 @@ async function getUserWorkspaceId(userId: string) {
 }
 
 export async function GET(request: Request) {
-  const session = await getSession();
+  const session = await getSession(request);
   if (!session) {
     return Response.json({ error: "Non authentifié" }, { status: 401 });
   }
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const session = await getSession();
+  const session = await getSession(request);
   if (!session) {
     return Response.json({ error: "Non authentifié" }, { status: 401 });
   }

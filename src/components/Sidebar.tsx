@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Bot, CalendarDays, Palette, CheckCircle, Settings, Plus, PenLine, Lightbulb, FolderOpen } from "lucide-react";
+import { LayoutDashboard, Bot, CalendarDays, Palette, CheckCircle, Settings, Plus, PenLine, Lightbulb, FolderOpen, Zap } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useUser } from "@/lib/useUser";
@@ -29,29 +29,34 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-    : user?.email[0].toUpperCase() || "?";
+    : user?.email?.[0]?.toUpperCase() || "?";
 
   return (
-    <div className="w-64 h-screen flex flex-col glass border-r border-white/10 dark:border-white/10 relative z-10 flex-shrink-0">
-      <div className="p-6">
-        <div className="flex items-center gap-2 mb-8">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary to-purple-600 flex items-center justify-center shadow-lg">
-            <span className="text-white font-bold text-lg">A</span>
+    <div className="w-64 h-full flex flex-col bg-[#0a0f1e]/80 backdrop-blur-xl border-r border-white/[0.06]">
+      {/* Logo */}
+      <div className="p-5 pb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-primary/20">
+            <Zap size={18} className="text-white" />
           </div>
-          <span className="text-xl font-bold tracking-tight text-foreground">Autocontent</span>
+          <span className="text-lg font-bold tracking-tight text-foreground">Autocontent</span>
         </div>
-        
-          <Link
-            href="/copilot"
-            onClick={onNavigate}
-            className="w-full mb-8 flex items-center justify-center gap-2 bg-foreground text-background hover:bg-foreground/90 transition-all font-medium py-2.5 px-4 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-          >
-            <Plus size={18} />
-            Créer avec l&apos;IA
-          </Link>
       </div>
 
-      <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
+      {/* CTA Button */}
+      <div className="px-4 mb-5">
+        <Link
+          href="/copilot"
+          onClick={onNavigate}
+          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white transition-all font-medium py-2.5 px-4 rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 transform hover:-translate-y-0.5 active:scale-[0.98]"
+        >
+          <Plus size={18} />
+          <span className="text-sm">Créer avec l&apos;IA</span>
+        </Link>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto scrollbar-hide">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -60,39 +65,42 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               href={item.href}
               onClick={onNavigate}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative",
-                isActive 
-                  ? "bg-primary/10 text-primary font-medium" 
-                  : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative text-sm",
+                isActive
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground"
               )}
             >
-              <item.icon size={20} className={cn("transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
-              <span>{item.name}</span>
               {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full" />
               )}
+              <item.icon size={18} className={cn("shrink-0 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+              <span>{item.name}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-4 mt-auto">
+      {/* Bottom Section */}
+      <div className="p-3 mt-auto border-t border-white/[0.04]">
         <Link
           href="/settings"
           onClick={onNavigate}
-          className="flex items-center gap-3 px-3 py-2.5 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground rounded-xl transition-all duration-200 group"
+          className="flex items-center gap-3 px-3 py-2.5 text-muted-foreground hover:bg-white/[0.04] hover:text-foreground rounded-xl transition-all duration-200 group text-sm"
         >
-          <Settings size={20} className="group-hover:rotate-45 transition-transform duration-300" />
+          <Settings size={18} className="group-hover:rotate-90 transition-transform duration-300" />
           <span>Paramètres</span>
         </Link>
-        <div className="mt-4 p-4 rounded-xl glass-card border border-white/5">
+
+        {/* User Card */}
+        <div className="mt-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold shadow-md">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/80 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-md">
               {initials}
             </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">{user?.name || user?.email || "Utilisateur"}</p>
-              <p className="text-xs text-muted-foreground">Admin Workspace</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">{user?.name || user?.email || "Utilisateur"}</p>
+              <p className="text-[11px] text-muted-foreground">Admin Workspace</p>
             </div>
           </div>
         </div>

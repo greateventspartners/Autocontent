@@ -24,7 +24,7 @@ export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await getSession();
+  const session = await getSession(_request);
   if (!session) {
     return Response.json({ error: "Non authentifié" }, { status: 401 });
   }

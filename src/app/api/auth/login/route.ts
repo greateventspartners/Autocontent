@@ -28,9 +28,9 @@ export async function POST(request: Request) {
       );
     }
 
-    await createSession(user.id, user.email);
+    const { cookie } = await createSession(user.id, user.email);
 
-    return Response.json({
+    const res = Response.json({
       user: {
         id: user.id,
         email: user.email,
@@ -38,6 +38,8 @@ export async function POST(request: Request) {
         role: user.role,
       },
     });
+    res.headers.append("Set-Cookie", cookie);
+    return res;
   } catch (error) {
     console.error("Login error:", error);
     return Response.json(

@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getSession } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  const session = await getSession();
+  const session = await getSession(request);
   if (!session) {
     return Response.json({ error: "Non authentifié" }, { status: 401 });
   }
@@ -17,12 +17,45 @@ export async function POST(request: Request) {
     return Response.json({ error: "GEMINI_API_KEY manquante" }, { status: 500 });
   }
 
+  const targetUrl = url.startsWith("http") ? url : `https://${url}`;
+
   let html = "";
   try {
-    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 Autocontent" } });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch(targetUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.5",
+      },
+      signal: controller.signal,
+      redirect: "follow",
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      return Response.json(
+        { error: `Le site a retourné une erreur HTTP ${res.status}` },
+        { status: 502 }
+      );
+    }
+
     html = await res.text();
-  } catch {
-    return Response.json({ error: "Impossible de récupérer l'URL" }, { status: 502 });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Erreur inconnue";
+    console.error("[analyze] Fetch error:", msg);
+    return Response.json(
+      { error: `Impossible de récupérer le site: ${msg}` },
+      { status: 502 }
+    );
+  }
+
+  if (!html || html.length < 50) {
+    return Response.json(
+      { error: "Le site a retourné une page vide ou trop courte." },
+      { status: 502 }
+    );
   }
 
   try {
@@ -53,7 +86,9 @@ ${html.slice(0, 20000)}`;
     };
 
     return Response.json({ analysis });
-  } catch {
-    return Response.json({ error: "Analyse IA impossible" }, { status: 500 });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Erreur inconnue";
+    console.error("[analyze] Gemini error:", msg);
+    return Response.json({ error: `Analyse IA impossible: ${msg}` }, { status: 500 });
   }
 }

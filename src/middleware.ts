@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 const COOKIE_NAME = "session";
 
 const protectedPaths = ["/dashboard", "/copilot", "/calendar", "/brand-kit", "/approvals", "/bio", "/ideas", "/settings"];
-const authPaths = ["/", "/login", "/register", "/forgot-password"];
+const authPaths = ["/", "/register", "/forgot-password"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

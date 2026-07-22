@@ -1,6 +1,5 @@
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import bcrypt from "bcryptjs";
-import { cookies } from "next/headers";
 
 function getJwtSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
@@ -29,6 +28,35 @@ export async function verifyPassword(
   return bcrypt.compare(password, hash);
 }
 
+function parseCookies(header: string | null): Record<string, string> {
+  const cookies: Record<string, string> = {};
+  if (!header) return cookies;
+  for (const pair of header.split(";")) {
+    const [key, ...rest] = pair.split("=");
+    if (key) cookies[key.trim()] = rest.join("=").trim();
+  }
+  return cookies;
+}
+
+function getTokenFromRequest(request: Request): string | null {
+  const cookies = parseCookies(request.headers.get("cookie"));
+  return cookies[COOKIE_NAME] ?? null;
+}
+
+export function createSessionCookie(token: string): string {
+  const parts = [
+    `${COOKIE_NAME}=${token}`,
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Lax",
+    `Max-Age=${COOKIE_MAX_AGE}`,
+  ];
+  if (process.env.NODE_ENV === "production") {
+    parts.push("Secure");
+  }
+  return parts.join("; ");
+}
+
 export async function createSession(userId: string, email: string) {
   const token = await new SignJWT({ userId, email })
     .setProtectedHeader({ alg: "HS256" })
@@ -36,21 +64,24 @@ export async function createSession(userId: string, email: string) {
     .setExpirationTime("7d")
     .sign(getJwtSecret());
 
-  const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: COOKIE_MAX_AGE,
-    path: "/",
-  });
-
-  return token;
+  return { token, cookie: createSessionCookie(token) };
 }
 
-export async function getSession(): Promise<SessionPayload | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
+export async function getSession(request?: Request): Promise<SessionPayload | null> {
+  let token: string | null = null;
+
+  if (request) {
+    token = getTokenFromRequest(request);
+  } else {
+    try {
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      token = cookieStore.get(COOKIE_NAME)?.value ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   if (!token) return null;
 
   try {
@@ -62,6 +93,11 @@ export async function getSession(): Promise<SessionPayload | null> {
 }
 
 export async function clearSession() {
-  const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_NAME);
+  try {
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    cookieStore.delete(COOKIE_NAME);
+  } catch {
+    // no-op on Cloudflare Workers
+  }
 }

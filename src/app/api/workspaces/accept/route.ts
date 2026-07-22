@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  const session = await getSession();
+  const session = await getSession(request);
   if (!session) {
     return Response.json({ error: "Non authentifié" }, { status: 401 });
   }

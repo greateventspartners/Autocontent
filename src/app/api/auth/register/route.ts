@@ -60,9 +60,9 @@ export async function POST(request: Request) {
       },
     });
 
-    await createSession(newUser.id, newUser.email);
+    const { cookie } = await createSession(newUser.id, newUser.email);
 
-    return Response.json({
+    const res = Response.json({
       user: {
         id: newUser.id,
         email: newUser.email,
@@ -71,6 +71,8 @@ export async function POST(request: Request) {
       },
       redirect: "/onboarding",
     });
+    res.headers.append("Set-Cookie", cookie);
+    return res;
   } catch (error: any) {
     console.error("Register error:", error?.message, error?.name, error?.stack?.substring(0, 500));
     return Response.json(

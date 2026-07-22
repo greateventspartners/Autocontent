@@ -14,6 +14,7 @@ import {
   Wand2,
   Search,
   Rocket,
+  Globe,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -64,6 +65,8 @@ export default function OnboardingPage() {
   const [voiceInput, setVoiceInput] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const logoRef = useRef<HTMLInputElement>(null);
+
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["linkedin", "instagram", "facebook"]);
 
   const [url, setUrl] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -145,6 +148,7 @@ export default function OnboardingPage() {
           doAndDonts: instructions,
           keywords,
           voiceSamples: voiceSamples.length > 0 ? voiceSamples : undefined,
+          platforms: selectedPlatforms,
         }),
       });
       if (!res.ok) {
@@ -170,10 +174,16 @@ export default function OnboardingPage() {
     setColors((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)));
   };
 
+  const togglePlatform = (id: string) => {
+    setSelectedPlatforms((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+    );
+  };
+
   return (
-    <div className="min-h-full flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Header */}
-      <div className="border-b border-white/10 px-6 py-4 flex items-center gap-4">
+      <div className="shrink-0 border-b border-white/10 px-6 py-4 flex items-center gap-4">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-purple-600 flex items-center justify-center shadow-lg">
           <span className="text-white font-bold text-xl">A</span>
         </div>
@@ -181,7 +191,7 @@ export default function OnboardingPage() {
       </div>
 
       {/* Step indicators */}
-      <div className="px-6 py-4 flex items-center gap-2">
+      <div className="shrink-0 px-6 py-4 flex items-center gap-2">
         {STEPS.map((s, i) => {
           const Icon = s.icon;
           const active = step === s.id;
@@ -201,14 +211,15 @@ export default function OnboardingPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-8">
-        <motion.div
-          key={step}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-          className="max-w-3xl mx-auto mt-4"
-        >
+      <div className="onboarding-scroll px-6 pb-8 relative">
+        <div className="max-w-3xl mx-auto mt-4">
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-8"
+          >
           {step === 0 && (
             <div className="space-y-8">
               <div>
@@ -308,6 +319,38 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
+              {/* Platforms */}
+              <div className="glass-card rounded-2xl p-6">
+                <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
+                  <Globe className="text-primary" size={18} />
+                  Plateformes de publication
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">Sélectionnez les réseaux sur lesquels vous souhaitez publier.</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {PLATFORMS.map((platform) => {
+                    const selected = selectedPlatforms.includes(platform.id);
+                    return (
+                      <button key={platform.id} onClick={() => togglePlatform(platform.id)}
+                        className={`p-3 rounded-xl border text-sm font-medium transition-all flex items-center gap-2 ${
+                          selected
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-white/10 bg-white/5 text-muted-foreground hover:bg-white/10"
+                        }`}>
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                          selected ? "border-primary bg-primary" : "border-white/20"
+                        }`}>
+                          {selected && <Check size={10} className="text-white" />}
+                        </div>
+                        {platform.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedPlatforms.length === 0 && (
+                  <p className="text-xs text-amber-400 mt-3">Sélectionnez au moins une plateforme pour continuer.</p>
+                )}
+              </div>
+
               {/* Tone */}
               <div className="glass-card rounded-2xl p-6">
                 <h3 className="text-lg font-bold mb-2">Ton Éditorial</h3>
@@ -403,7 +446,7 @@ export default function OnboardingPage() {
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {PLATFORMS.map((platform) => {
+                {PLATFORMS.filter((p) => selectedPlatforms.includes(p.id)).map((platform) => {
                   const variants = bios?.[platform.id] ?? [];
                   if (!bios) return null;
                   return (
@@ -453,6 +496,12 @@ export default function OnboardingPage() {
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                    <Globe size={14} className="text-primary" />
+                  </div>
+                  <span>{selectedPlatforms.length} plateforme{selectedPlatforms.length > 1 ? "s" : ""} : {selectedPlatforms.map((p) => PLATFORMS.find((pl) => pl.id === p)?.label).filter(Boolean).join(", ")}</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
                     <PenLine size={14} className="text-primary" />
                   </div>
                   <span>{bios ? Object.keys(bios).length : 0} plateformes avec bios générées</span>
@@ -461,17 +510,22 @@ export default function OnboardingPage() {
             </div>
           )}
         </motion.div>
+        </div>
       </div>
 
       {/* Footer */}
-      <div className="border-t border-white/10 px-6 py-4 flex items-center justify-between">
+      <div className="shrink-0 border-t border-white/10 px-6 py-4 flex items-center justify-between">
         <button onClick={() => setStep((s) => s - 1)} disabled={step === 0}
           className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 flex items-center gap-2">
           <ArrowLeft size={16} /> Retour
         </button>
         {step < 2 ? (
-          <button onClick={() => setStep((s) => s + 1)}
-            className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/25 font-medium text-sm flex items-center gap-2 transition-transform active:scale-95">
+          <button onClick={() => {
+              if (step === 0 && selectedPlatforms.length === 0) return;
+              setStep((s) => s + 1);
+            }}
+            disabled={step === 0 && selectedPlatforms.length === 0}
+            className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/25 font-medium text-sm flex items-center gap-2 transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed">
             Suivant <ArrowRight size={16} />
           </button>
         ) : (

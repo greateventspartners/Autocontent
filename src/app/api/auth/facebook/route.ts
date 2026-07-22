@@ -4,8 +4,8 @@ import crypto from "crypto";
 import { getSession } from "@/lib/auth";
 import { getFacebookAuthorizationUrl } from "@/lib/facebook";
 
-export async function GET() {
-  const session = await getSession();
+export async function GET(request: Request) {
+  const session = await getSession(request);
 
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

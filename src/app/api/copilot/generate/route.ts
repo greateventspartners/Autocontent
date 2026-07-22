@@ -46,7 +46,7 @@ async function getBrandKit(workspaceId: string) {
 const validPlatforms = ["linkedin", "twitter", "instagram", "facebook", "tiktok", "pinterest", "wordpress", "medium"];
 
 export async function POST(request: Request) {
-  const session = await getSession();
+  const session = await getSession(request);
   if (!session) {
     return Response.json({ error: "Non authentifié" }, { status: 401 });
   }

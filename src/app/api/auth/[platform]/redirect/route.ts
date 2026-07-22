@@ -27,7 +27,7 @@ export async function GET(
     return Response.json({ error: "Plateforme inconnue" }, { status: 400 });
   }
 
-  const { error, session } = await requireAuth();
+  const { error, session } = await requireAuth(_request);
   if (error) {
     return Response.json({ error }, { status: 401 });
   }

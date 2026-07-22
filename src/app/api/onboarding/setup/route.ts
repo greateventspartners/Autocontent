@@ -12,7 +12,7 @@ async function getUserWorkspaceId(userId: string) {
 }
 
 export async function POST(request: Request) {
-  const session = await getSession();
+  const session = await getSession(request);
   if (!session) {
     return Response.json({ error: "Non authentifié" }, { status: 401 });
   }
@@ -31,6 +31,7 @@ export async function POST(request: Request) {
       doAndDonts?: string;
       keywords?: string;
       voiceSamples?: string[];
+      platforms?: string[];
     };
 
     const brandKit = await prisma.brandKit.create({
@@ -41,9 +42,10 @@ export async function POST(request: Request) {
         colors: body.colors
           ? (body.colors as Prisma.InputJsonValue)
           : Prisma.JsonNull,
-        fonts: body.keywords
-          ? ({ keywords: body.keywords } as Prisma.InputJsonValue)
-          : Prisma.JsonNull,
+        fonts: {
+          ...(body.keywords ? { keywords: body.keywords } : {}),
+          ...(body.platforms?.length ? { platforms: body.platforms } : {}),
+        } as Prisma.InputJsonValue,
         toneOfVoice: body.toneOfVoice || null,
         doAndDonts: body.doAndDonts || null,
         voiceSamples: body.voiceSamples?.length

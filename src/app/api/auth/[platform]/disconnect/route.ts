@@ -10,7 +10,7 @@ export async function POST(
     return Response.json({ error: "Plateforme inconnue" }, { status: 400 });
   }
 
-  const { error, workspaceId } = await requireAuth();
+  const { error, workspaceId } = await requireAuth(_request);
   if (error) {
     return Response.json({ error }, { status: 401 });
   }

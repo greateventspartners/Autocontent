@@ -111,7 +111,7 @@ export async function GET(
     return Response.redirect(new URL("/settings?error=unknown_platform", request.url));
   }
 
-  const { error: authError, session, workspaceId } = await requireAuth();
+  const { error: authError, session, workspaceId } = await requireAuth(request);
   if (authError) {
     return Response.redirect(new URL("/?error=auth_required", request.url));
   }

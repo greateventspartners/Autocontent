@@ -202,59 +202,44 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="h-full flex flex-col gap-4 md:gap-6">
+    <div className="h-full flex flex-col gap-5">
+      {/* Page Header */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 md:p-3 bg-primary/10 text-primary rounded-xl">
-              <CalendarIcon size={22} />
-            </div>
-            <div>
-              <h2 className="text-xl md:text-2xl font-bold tracking-tight">Calendrier Éditorial</h2>
-              <p className="text-muted-foreground text-xs md:text-sm">Gérez et planifiez vos publications.</p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Calendrier</h1>
+            <p className="text-muted-foreground text-sm mt-0.5">Planifiez et gérez vos publications.</p>
           </div>
 
           <div className="flex items-center gap-2 md:hidden">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`p-2 rounded-lg transition-colors ${viewMode === "grid" ? "bg-primary/20 text-primary" : "bg-white/5 border border-white/10"}`}
-            >
+            <button onClick={() => setViewMode("grid")}
+              className={`p-2 rounded-xl transition-colors ${viewMode === "grid" ? "bg-primary/10 text-primary" : "bg-white/[0.03] border border-white/[0.06] text-muted-foreground"}`}>
               <Grid3x3 size={16} />
             </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className={`p-2 rounded-lg transition-colors ${viewMode === "list" ? "bg-primary/20 text-primary" : "bg-white/5 border border-white/10"}`}
-            >
+            <button onClick={() => setViewMode("list")}
+              className={`p-2 rounded-xl transition-colors ${viewMode === "list" ? "bg-primary/10 text-primary" : "bg-white/[0.03] border border-white/[0.06] text-muted-foreground"}`}>
               <List size={16} />
             </button>
           </div>
         </div>
 
+        {/* Controls bar */}
         <div className="flex flex-wrap items-center gap-2">
           <div ref={filterRef} className="relative">
-            <button
-              onClick={() => setShowFilter(!showFilter)}
-              className={`p-2 rounded-lg transition-colors ${filterPlatform || filterCampaign ? "bg-primary/20 text-primary" : "bg-white/5 border border-white/10 hover:bg-white/10"}`}
-            >
-              <Filter size={18} />
+            <button onClick={() => setShowFilter(!showFilter)}
+              className={`p-2.5 rounded-xl transition-colors ${filterPlatform || filterCampaign ? "bg-primary/10 text-primary" : "bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] text-muted-foreground"}`}>
+              <Filter size={16} />
               {(filterPlatform || filterCampaign) && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary rounded-full" />
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full" />
               )}
             </button>
             {showFilter && (
-              <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 z-30 w-64 glass-card rounded-xl p-4 space-y-3 border border-white/10 shadow-xl"
-              >
+              <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 z-30 w-64 glass-card rounded-2xl p-4 space-y-3 border border-white/[0.06] shadow-2xl">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Plateforme</label>
-                  <select
-                    value={filterPlatform}
-                    onChange={(e) => setFilterPlatform(e.target.value)}
-                    className="w-full p-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  >
+                  <select value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)}
+                    className="w-full p-2.5 bg-white/[0.03] border border-white/[0.06] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
                     {PLATFORM_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
@@ -262,11 +247,8 @@ export default function CalendarPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Campagne</label>
-                  <select
-                    value={filterCampaign}
-                    onChange={(e) => setFilterCampaign(e.target.value)}
-                    className="w-full p-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  >
+                  <select value={filterCampaign} onChange={(e) => setFilterCampaign(e.target.value)}
+                    className="w-full p-2.5 bg-white/[0.03] border border-white/[0.06] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
                     <option value="">Toutes les campagnes</option>
                     {campaigns.map((c) => (
                       <option key={c.id} value={c.id}>{c.title}</option>
@@ -274,31 +256,28 @@ export default function CalendarPage() {
                   </select>
                 </div>
                 {(filterPlatform || filterCampaign) && (
-                  <button
-                    onClick={() => { setFilterPlatform(""); setFilterCampaign(""); }}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Réinitialiser les filtres
+                  <button onClick={() => { setFilterPlatform(""); setFilterCampaign(""); }}
+                    className="text-xs text-primary hover:text-primary/80 font-medium">
+                    Réinitialiser
                   </button>
                 )}
               </motion.div>
             )}
           </div>
 
-          <div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-1">
-            <button onClick={prevMonth} className="p-1.5 hover:bg-white/10 rounded-md transition-colors"><ChevronLeft size={18} /></button>
-            <span className="px-2 md:px-4 font-medium text-xs md:text-sm whitespace-nowrap">{monthNames[month]} {year}</span>
-            <button onClick={nextMonth} className="p-1.5 hover:bg-white/10 rounded-md transition-colors"><ChevronRight size={18} /></button>
+          {/* Month navigator */}
+          <div className="flex items-center bg-white/[0.03] border border-white/[0.06] rounded-xl p-1">
+            <button onClick={prevMonth} className="p-1.5 hover:bg-white/[0.06] rounded-lg transition-colors text-muted-foreground hover:text-foreground"><ChevronLeft size={16} /></button>
+            <span className="px-3 font-medium text-sm whitespace-nowrap">{monthNames[month]} {year}</span>
+            <button onClick={nextMonth} className="p-1.5 hover:bg-white/[0.06] rounded-lg transition-colors text-muted-foreground hover:text-foreground"><ChevronRight size={16} /></button>
           </div>
 
-          <button onClick={today} className="px-3 py-1.5 md:px-4 md:py-2 bg-white/5 border border-white/10 rounded-lg text-xs md:text-sm font-medium hover:bg-white/10 transition-colors">
+          <button onClick={today} className="px-4 py-2 bg-white/[0.03] border border-white/[0.06] rounded-xl text-sm font-medium hover:bg-white/[0.06] transition-colors text-muted-foreground hover:text-foreground">
             Aujourd&apos;hui
           </button>
 
-          <Link
-            href="/copilot"
-            className="px-3 py-1.5 md:px-4 md:py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/25 font-medium text-xs md:text-sm flex items-center gap-1.5"
-          >
+          <Link href="/copilot"
+            className="px-4 py-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white rounded-xl shadow-lg shadow-primary/20 font-medium text-sm flex items-center gap-1.5 transition-all">
             <Plus size={14} /> <span className="hidden sm:inline">Créer</span>
           </Link>
         </div>
@@ -340,56 +319,39 @@ export default function CalendarPage() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 glass-card rounded-2xl flex flex-col overflow-hidden border border-white/10 relative">
-          <div className="hidden md:grid grid-cols-7 border-b border-white/10 bg-white/[0.02]">
+        <div className="flex-1 glass-card rounded-2xl flex flex-col overflow-hidden">
+          {/* Week headers */}
+          <div className="grid grid-cols-7 border-b border-white/[0.04] bg-white/[0.015]">
             {weekDays.map(day => (
-              <div key={day} className="py-3 text-center text-sm font-medium text-muted-foreground border-r border-white/10 last:border-0">
-                {day}
+              <div key={day} className="py-3 text-center text-xs font-medium text-muted-foreground border-r border-white/[0.04] last:border-0">
+                <span className="hidden md:inline">{day}</span>
+                <span className="md:hidden">{day.slice(0, 2)}</span>
               </div>
             ))}
           </div>
 
-          <div className="md:hidden grid grid-cols-7 border-b border-white/10 bg-white/[0.02]">
-            {weekDays.map(day => (
-              <div key={day} className="py-2 text-center text-[10px] font-medium text-muted-foreground border-r border-white/10 last:border-0">
-                {day.slice(0, 2)}
-              </div>
-            ))}
-          </div>
-
-          <div className="flex-1 grid grid-cols-7 auto-rows-fr bg-black/20">
+          {/* Calendar grid */}
+          <div className="flex-1 grid grid-cols-7 auto-rows-fr">
             {calendarDays.slice(0, 42).map((day, idx) => (
-              <div
-                key={idx}
-                className={`p-1 md:p-2 border-r border-b border-white/5 relative group transition-colors hover:bg-white/[0.02] ${!day.isCurrentMonth ? 'opacity-40 bg-black/20' : ''} ${day.isToday ? 'bg-primary/5' : ''}`}
-              >
-                <div className="flex justify-between items-start mb-1 md:mb-2">
-                  <span className={`text-xs md:text-sm font-medium w-5 h-5 md:w-7 md:h-7 flex items-center justify-center rounded-full ${day.isToday ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-foreground'}`}>
-                    {day.date}
-                  </span>
-                </div>
-
-                <div className="space-y-0.5 md:space-y-1.5">
+              <div key={idx}
+                className={`p-1.5 md:p-2 border-r border-b border-white/[0.03] transition-colors hover:bg-white/[0.02] ${!day.isCurrentMonth ? "opacity-30" : ""} ${day.isToday ? "bg-primary/[0.04]" : ""}`}>
+                <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1 ${day.isToday ? "bg-primary text-white shadow-md shadow-primary/30" : "text-foreground"}`}>
+                  {day.date}
+                </span>
+                <div className="space-y-0.5">
                   {day.posts.slice(0, 2).map(post => {
                     const color = PLATFORM_COLORS[post.platform] || "bg-gray-500 text-white";
                     const icon = PLATFORM_ICONS[post.platform] || "?";
                     return (
-                      <motion.div
-                        key={post.id}
-                        layout
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className={`px-1 md:px-2 py-0.5 md:py-1.5 rounded-md text-[9px] md:text-xs font-medium flex items-center gap-1 shadow-sm ${color}`}
-                      >
-                        <span className="font-bold opacity-80 uppercase hidden md:inline">{icon}</span>
+                      <motion.div key={post.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                        className={`px-1.5 py-0.5 rounded-md text-[10px] font-medium flex items-center gap-1 ${color}`}>
+                        <span className="font-bold opacity-80 uppercase hidden lg:inline">{icon}</span>
                         <span className="truncate">{post.title}</span>
                       </motion.div>
                     );
                   })}
                   {day.posts.length > 2 && (
-                    <span className="text-[8px] md:text-[10px] text-muted-foreground pl-0.5 md:pl-1">
-                      +{day.posts.length - 2}
-                    </span>
+                    <span className="text-[9px] text-muted-foreground pl-1">+{day.posts.length - 2}</span>
                   )}
                 </div>
               </div>

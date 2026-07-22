@@ -118,18 +118,17 @@ export async function GET(request: Request) {
       });
     }
 
-    await createSession(user.id, user.email);
+    const { cookie } = await createSession(user.id, user.email);
 
     const destination = isNewUser ? "/onboarding" : "/dashboard";
     const res = NextResponse.redirect(new URL(destination, request.url));
-    res.cookies.delete("google_oauth_state");
+    res.headers.append("Set-Cookie", cookie);
+    res.headers.append("Set-Cookie", "google_oauth_state=; Path=/; Max-Age=0");
     if (!isNewUser) {
-      res.cookies.set("onboarding_done", "1", {
-        path: "/",
-        httpOnly: true,
-        sameSite: "lax",
-        maxAge: 31536000,
-      });
+      res.headers.append(
+        "Set-Cookie",
+        "onboarding_done=1; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000"
+      );
     }
     return res;
   } catch (err) {

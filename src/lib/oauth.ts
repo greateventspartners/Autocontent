@@ -50,8 +50,8 @@ export async function getWorkspaceForUser(userId: string) {
   return member?.workspaceId ?? null;
 }
 
-export async function requireAuth() {
-  const session = await getSession();
+export async function requireAuth(request?: Request) {
+  const session = await getSession(request);
   if (!session) {
     return { error: "Non authentifié" as const, session: null, workspaceId: null };
   }
