@@ -64,3 +64,40 @@ export async function PATCH(
     return Response.json({ error: "Erreur lors de la mise à jour" }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const session = await getSession(_request);
+  if (!session) {
+    return Response.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const workspaceId = await getUserWorkspaceId(session.userId);
+  if (!workspaceId) return Response.json({ error: "Aucun workspace" }, { status: 404 });
+
+  const denied = await verifyAccess(workspaceId, id);
+  if (denied) return Response.json({ error: denied.error }, { status: denied.status });
+
+  try {
+    const post = await prisma.post.findUnique({
+      where: { id },
+      include: { content: { select: { id: true }, include: { _count: { select: { posts: true } } } } },
+    });
+
+    if (!post) return Response.json({ error: "Post introuvable" }, { status: 404 });
+
+    await prisma.post.delete({ where: { id } });
+
+    if (post.content._count.posts <= 1) {
+      await prisma.content.delete({ where: { id: post.content.id } });
+    }
+
+    return Response.json({ ok: true });
+  } catch (error) {
+    console.error("Delete post error:", error);
+    return Response.json({ error: "Erreur lors de la suppression" }, { status: 500 });
+  }
+}

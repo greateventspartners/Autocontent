@@ -34,14 +34,14 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="w-64 h-full flex flex-col bg-[#0a0f1e]/80 backdrop-blur-xl border-r border-white/[0.06]">
       {/* Logo */}
-      <div className="p-5 pb-4">
+      <Link href="/dashboard" className="p-5 pb-4 block">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-primary/20">
             <Zap size={18} className="text-white" />
           </div>
           <span className="text-lg font-bold tracking-tight text-foreground">Autocontent</span>
         </div>
-      </div>
+      </Link>
 
       {/* CTA Button */}
       <div className="px-4 mb-5">

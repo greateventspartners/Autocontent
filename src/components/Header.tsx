@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Bell, Menu } from "lucide-react";
+import { Search, Bell, Menu, Zap } from "lucide-react";
+import Link from "next/link";
 import ThemeToggle from "./ThemeToggle";
 import { useUser } from "@/lib/useUser";
 
@@ -21,6 +22,12 @@ export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   return (
     <header className="h-16 px-4 md:px-6 flex items-center justify-between border-b border-white/[0.04] bg-background/50 backdrop-blur-md relative z-10 sticky top-0">
       <div className="flex items-center gap-3">
+        <Link href="/dashboard" className="flex items-center gap-2 md:hidden">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-primary/20">
+            <Zap size={15} className="text-white" />
+          </div>
+          <span className="text-sm font-bold tracking-tight">Autocontent</span>
+        </Link>
         <button
           onClick={onMenuClick}
           className="md:hidden p-2 text-muted-foreground hover:bg-white/5 rounded-lg transition-colors"

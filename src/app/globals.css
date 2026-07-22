@@ -139,3 +139,17 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+/* Calendar drag & drop */
+.drop-zone-active {
+  background: rgba(99, 102, 241, 0.08);
+  ring: 2px dashed rgba(99, 102, 241, 0.3);
+}
+
+.drag-overlay {
+  opacity: 0.9;
+  transform: scale(1.03);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  cursor: grabbing;
+  pointer-events: none;
+}

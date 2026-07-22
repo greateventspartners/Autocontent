@@ -1,109 +1,62 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, Plus, AlertCircle, List, Grid3x3 } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { motion } from "framer-motion";
-
-type Platform = "linkedin" | "twitter" | "instagram" | "facebook" | "tiktok" | "pinterest" | "wordpress" | "medium";
-
-interface Post {
-  id: string;
-  title: string;
-  platform: Platform;
-  time: string;
-  status: string;
-}
-
-interface DayData {
-  date: number;
-  isCurrentMonth: boolean;
-  isToday?: boolean;
-  posts: Post[];
-}
-
-interface CalendarPost {
-  id: string;
-  sourceIdea: string;
-  platform: string;
-  scheduledAt: string;
-  status: string;
-  content: { campaign: { id: string; title: string } };
-}
-
-type CampaignOption = { id: string; title: string };
-
-const PLATFORM_COLORS: Record<string, string> = {
-  linkedin: "bg-blue-600 text-white shadow-blue-500/20",
-  twitter: "bg-sky-500 text-white shadow-sky-500/20",
-  instagram: "bg-gradient-to-tr from-pink-500 to-orange-400 text-white shadow-pink-500/20",
-  facebook: "bg-blue-800 text-white shadow-blue-900/20",
-  tiktok: "bg-black text-white shadow-black/20",
-  pinterest: "bg-red-600 text-white shadow-red-700/20",
-  wordpress: "bg-slate-700 text-white shadow-slate-900/20",
-  medium: "bg-stone-800 text-white shadow-stone-900/20",
-};
-
-const PLATFORM_ICONS: Record<string, string> = {
-  linkedin: "in",
-  twitter: "X",
-  instagram: "ig",
-  facebook: "fb",
-  tiktok: "tt",
-  pinterest: "P",
-  wordpress: "W",
-  medium: "M",
-};
-
-const PLATFORM_LABELS: Record<string, string> = {
-  linkedin: "LinkedIn",
-  twitter: "X",
-  instagram: "Instagram",
-  facebook: "Facebook",
-  tiktok: "TikTok",
-  pinterest: "Pinterest",
-  wordpress: "WordPress",
-  medium: "Medium",
-};
+import ControlsBar from "@/components/calendar/ControlsBar";
+import MonthView from "@/components/calendar/MonthView";
+import WeekView from "@/components/calendar/WeekView";
+import ListView from "@/components/calendar/ListView";
+import UnplannedPane from "@/components/calendar/UnplannedPane";
+import PostCard from "@/components/calendar/PostCard";
+import PostPreviewModal from "@/components/calendar/PostPreviewModal";
+import type { CalendarPost, DayData, ViewMode, CampaignOption } from "@/components/calendar/types";
 
 export default function CalendarPage() {
-  const [posts, setPosts] = useState<CalendarPost[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [scheduledPosts, setScheduledPosts] = useState<CalendarPost[]>([]);
+  const [draftPosts, setDraftPosts] = useState<CalendarPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [showFilter, setShowFilter] = useState(false);
   const [filterPlatform, setFilterPlatform] = useState("");
   const [filterCampaign, setFilterCampaign] = useState("");
   const [campaigns, setCampaigns] = useState<CampaignOption[]>([]);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [previewPost, setPreviewPost] = useState<CalendarPost | null>(null);
+  const [activeDragPost, setActiveDragPost] = useState<CalendarPost | null>(null);
 
-  const PLATFORM_OPTIONS = [
-    { value: "", label: "Toutes les plateformes" },
-    { value: "linkedin", label: "LinkedIn" },
-    { value: "twitter", label: "X / Twitter" },
-    { value: "instagram", label: "Instagram" },
-    { value: "facebook", label: "Facebook" },
-    { value: "tiktok", label: "TikTok" },
-    { value: "pinterest", label: "Pinterest" },
-    { value: "wordpress", label: "WordPress" },
-    { value: "medium", label: "Medium" },
-  ];
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
-  useEffect(() => {
+  // Fetch scheduled posts
+  const fetchScheduled = useCallback(() => {
     const params = new URLSearchParams({ calendar: "true" });
     if (filterPlatform) params.set("platform", filterPlatform);
     if (filterCampaign) params.set("campaignId", filterCampaign);
-
-    setLoading(true);
-    fetch(`/api/posts?${params}`)
+    return fetch(`/api/posts?${params}`)
       .then((res) => {
         if (!res.ok) throw new Error("Erreur chargement calendrier");
         return res.json() as Promise<{ posts: CalendarPost[] }>;
       })
-      .then((data) => setPosts(data.posts))
+      .then((data) => setScheduledPosts(data.posts));
+  }, [filterPlatform, filterCampaign]);
+
+  // Fetch draft posts (unplanned)
+  const fetchDrafts = useCallback(() => {
+    const params = new URLSearchParams({ status: "DRAFT" });
+    if (filterPlatform) params.set("platform", filterPlatform);
+    return fetch(`/api/posts?${params}`)
+      .then((res) => res.json() as Promise<{ posts: CalendarPost[] }>)
+      .then((data) => setDraftPosts(data.posts));
+  }, [filterPlatform]);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([fetchScheduled(), fetchDrafts()])
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [filterPlatform, filterCampaign]);
+  }, [fetchScheduled, fetchDrafts]);
 
   useEffect(() => {
     fetch("/api/campaigns")
@@ -112,71 +65,104 @@ export default function CalendarPage() {
       .catch(() => {});
   }, []);
 
-  const filterRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
-        setShowFilter(false);
-      }
-    };
-    if (showFilter) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showFilter]);
+  // Build calendar days for month/week views
+  const buildDays = (): DayData[] => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startPadding = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+    const daysInMonth = lastDay.getDate();
+    const totalCells = Math.ceil((startPadding + daysInMonth) / 7) * 7;
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const startPadding = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
-  const daysInMonth = lastDay.getDate();
-  const totalCells = Math.ceil((startPadding + daysInMonth) / 7) * 7;
-
-  const prevMonth = () => setCurrentDate(new Date(year, month - 1));
-  const nextMonth = () => setCurrentDate(new Date(year, month + 1));
-  const today = () => setCurrentDate(new Date());
-
-  const now = new Date();
-  const isToday = (d: number) =>
-    now.getFullYear() === year && now.getMonth() === month && now.getDate() === d;
-
-  const buildCalendar = (): DayData[] => {
     const days: DayData[] = [];
     const prevLastDay = new Date(year, month, 0).getDate();
+
     for (let i = startPadding - 1; i >= 0; i--) {
-      days.push({ date: prevLastDay - i, isCurrentMonth: false, posts: [] });
+      const d = prevLastDay - i;
+      const dt = new Date(year, month - 1, d);
+      const dateStr = formatDate(dt);
+      days.push({ date: d, isCurrentMonth: false, posts: getPostsForDate(dateStr), dateStr });
     }
+
+    const now = new Date();
     for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      const dayPosts: Post[] = posts
-        .filter((p) => p.scheduledAt?.startsWith(dateStr))
-        .map((p) => ({
-          id: p.id,
-          title: p.sourceIdea,
-          platform: p.platform.toLowerCase() as Platform,
-          time: p.scheduledAt ? p.scheduledAt.split("T")[1]?.slice(0, 5) || "" : "",
-          status: p.status,
-        }));
-      days.push({ date: d, isCurrentMonth: true, isToday: isToday(d), posts: dayPosts });
+      const dt = new Date(year, month, d);
+      const dateStr = formatDate(dt);
+      const isToday =
+        now.getFullYear() === year && now.getMonth() === month && now.getDate() === d;
+      days.push({ date: d, isCurrentMonth: true, isToday, posts: getPostsForDate(dateStr), dateStr });
     }
+
     const remaining = totalCells - days.length;
     for (let d = 1; d <= remaining; d++) {
-      days.push({ date: d, isCurrentMonth: false, posts: [] });
+      const dt = new Date(year, month + 1, d);
+      const dateStr = formatDate(dt);
+      days.push({ date: d, isCurrentMonth: false, posts: getPostsForDate(dateStr), dateStr });
     }
+
     return days;
   };
 
-  const weekDays = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-  const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
-  const calendarDays = buildCalendar();
+  const formatDate = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-  const listPosts = posts
-    .filter((p) => {
-      if (!p.scheduledAt) return false;
-      const d = new Date(p.scheduledAt);
-      return d.getFullYear() === year && d.getMonth() === month;
-    })
-    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+  const getPostsForDate = (dateStr: string) =>
+    scheduledPosts.filter((p) => p.scheduledAt?.startsWith(dateStr));
+
+  const days = buildDays();
+
+  // Handle drag end
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveDragPost(null);
+
+    if (!over) return;
+
+    const postId = String(active.id);
+    const overId = String(over.id);
+
+    // Extract target date from drop zone id (format: "day-2026-07-25")
+    const dateMatch = overId.match(/^day-(\d{4}-\d{2}-\d{2})$/);
+    if (!dateMatch) return;
+
+    const targetDate = dateMatch[1];
+    const post = scheduledPosts.find((p) => p.id === postId) || draftPosts.find((p) => p.id === postId);
+    if (!post) return;
+
+    // Keep existing time or default to 09:00
+    let time = "09:00";
+    if (post.scheduledAt) {
+      const t = post.scheduledAt.split("T")[1];
+      if (t) time = t.slice(0, 5);
+    }
+
+    const newScheduledAt = `${targetDate}T${time}:00.000Z`;
+    const isFromUnplanned = !post.scheduledAt;
+
+    try {
+      const body: Record<string, unknown> = { scheduledAt: newScheduledAt };
+      if (isFromUnplanned) body.status = "SCHEDULED";
+
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        // Refresh data
+        await Promise.all([fetchScheduled(), fetchDrafts()]);
+      }
+    } catch (err) {
+      console.error("Drag error:", err);
+    }
+  };
+
+  const handlePostDeleted = (postId: string) => {
+    setScheduledPosts((prev) => prev.filter((p) => p.id !== postId));
+    setDraftPosts((prev) => prev.filter((p) => p.id !== postId));
+  };
 
   if (loading) {
     return (
@@ -194,7 +180,7 @@ export default function CalendarPage() {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center space-y-4">
-          <AlertCircle size={40} className="text-destructive mx-auto" />
+          <p className="text-destructive text-4xl">!</p>
           <p className="text-muted-foreground">{error}</p>
         </div>
       </div>
@@ -202,163 +188,60 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="h-full flex flex-col gap-5">
-      {/* Page Header */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Calendrier</h1>
-            <p className="text-muted-foreground text-sm mt-0.5">Planifiez et gérez vos publications.</p>
-          </div>
+    <DndContext
+      sensors={sensors}
+      onDragStart={(event) => {
+        const post = scheduledPosts.find((p) => p.id === event.active.id) || draftPosts.find((p) => p.id === event.active.id);
+        setActiveDragPost(post || null);
+      }}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="h-full flex flex-col gap-5">
+        <ControlsBar
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          currentDate={currentDate}
+          setCurrentDate={setCurrentDate}
+          filterPlatform={filterPlatform}
+          setFilterPlatform={setFilterPlatform}
+          filterCampaign={filterCampaign}
+          setFilterCampaign={setFilterCampaign}
+          campaigns={campaigns}
+          draftCount={draftPosts.length}
+        />
 
-          <div className="flex items-center gap-2 md:hidden">
-            <button onClick={() => setViewMode("grid")}
-              className={`p-2 rounded-xl transition-colors ${viewMode === "grid" ? "bg-primary/10 text-primary" : "bg-white/[0.03] border border-white/[0.06] text-muted-foreground"}`}>
-              <Grid3x3 size={16} />
-            </button>
-            <button onClick={() => setViewMode("list")}
-              className={`p-2 rounded-xl transition-colors ${viewMode === "list" ? "bg-primary/10 text-primary" : "bg-white/[0.03] border border-white/[0.06] text-muted-foreground"}`}>
-              <List size={16} />
-            </button>
-          </div>
-        </div>
+        {viewMode === "month" && (
+          <MonthView days={days} onPostClick={setPreviewPost} />
+        )}
 
-        {/* Controls bar */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div ref={filterRef} className="relative">
-            <button onClick={() => setShowFilter(!showFilter)}
-              className={`p-2.5 rounded-xl transition-colors ${filterPlatform || filterCampaign ? "bg-primary/10 text-primary" : "bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] text-muted-foreground"}`}>
-              <Filter size={16} />
-              {(filterPlatform || filterCampaign) && (
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full" />
-              )}
-            </button>
-            {showFilter && (
-              <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-                className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 z-30 w-64 glass-card rounded-2xl p-4 space-y-3 border border-white/[0.06] shadow-2xl">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Plateforme</label>
-                  <select value={filterPlatform} onChange={(e) => setFilterPlatform(e.target.value)}
-                    className="w-full p-2.5 bg-white/[0.03] border border-white/[0.06] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
-                    {PLATFORM_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Campagne</label>
-                  <select value={filterCampaign} onChange={(e) => setFilterCampaign(e.target.value)}
-                    className="w-full p-2.5 bg-white/[0.03] border border-white/[0.06] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
-                    <option value="">Toutes les campagnes</option>
-                    {campaigns.map((c) => (
-                      <option key={c.id} value={c.id}>{c.title}</option>
-                    ))}
-                  </select>
-                </div>
-                {(filterPlatform || filterCampaign) && (
-                  <button onClick={() => { setFilterPlatform(""); setFilterCampaign(""); }}
-                    className="text-xs text-primary hover:text-primary/80 font-medium">
-                    Réinitialiser
-                  </button>
-                )}
-              </motion.div>
-            )}
-          </div>
+        {viewMode === "week" && (
+          <WeekView days={days} currentDate={currentDate} onPostClick={setPreviewPost} />
+        )}
 
-          {/* Month navigator */}
-          <div className="flex items-center bg-white/[0.03] border border-white/[0.06] rounded-xl p-1">
-            <button onClick={prevMonth} className="p-1.5 hover:bg-white/[0.06] rounded-lg transition-colors text-muted-foreground hover:text-foreground"><ChevronLeft size={16} /></button>
-            <span className="px-3 font-medium text-sm whitespace-nowrap">{monthNames[month]} {year}</span>
-            <button onClick={nextMonth} className="p-1.5 hover:bg-white/[0.06] rounded-lg transition-colors text-muted-foreground hover:text-foreground"><ChevronRight size={16} /></button>
-          </div>
+        {viewMode === "list" && (
+          <ListView posts={scheduledPosts} onPostClick={setPreviewPost} />
+        )}
 
-          <button onClick={today} className="px-4 py-2 bg-white/[0.03] border border-white/[0.06] rounded-xl text-sm font-medium hover:bg-white/[0.06] transition-colors text-muted-foreground hover:text-foreground">
-            Aujourd&apos;hui
-          </button>
+        {viewMode === "unplanned" && (
+          <UnplannedPane posts={draftPosts} onPostClick={setPreviewPost} />
+        )}
 
-          <Link href="/copilot"
-            className="px-4 py-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white rounded-xl shadow-lg shadow-primary/20 font-medium text-sm flex items-center gap-1.5 transition-all">
-            <Plus size={14} /> <span className="hidden sm:inline">Créer</span>
-          </Link>
-        </div>
+        {previewPost && (
+          <PostPreviewModal
+            post={previewPost}
+            onClose={() => setPreviewPost(null)}
+            onDeleted={handlePostDeleted}
+          />
+        )}
       </div>
 
-      {viewMode === "list" ? (
-        <div className="flex-1 glass-card rounded-2xl flex flex-col overflow-hidden border border-white/10">
-          <div className="flex-1 overflow-y-auto">
-            {listPosts.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground text-sm">
-                Aucune publication planifiée ce mois.
-              </div>
-            ) : (
-              <div className="divide-y divide-white/5">
-                {listPosts.map((post) => {
-                  const color = PLATFORM_COLORS[post.platform.toLowerCase()] || "bg-gray-500 text-white";
-                  const icon = PLATFORM_ICONS[post.platform.toLowerCase()] || "?";
-                  const d = new Date(post.scheduledAt);
-                  const dayNum = d.getDate();
-                  const time = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-                  return (
-                    <div key={post.id} className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors">
-                      <div className="w-10 h-10 rounded-lg bg-white/5 flex flex-col items-center justify-center flex-shrink-0">
-                        <span className="text-[10px] text-muted-foreground leading-none">{weekDays[(d.getDay() + 6) % 7]}</span>
-                        <span className="text-sm font-bold leading-tight">{dayNum}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{post.sourceIdea}</p>
-                        <p className="text-xs text-muted-foreground">{time}</p>
-                      </div>
-                      <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase flex-shrink-0 ${color}`}>
-                        {icon}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+      <DragOverlay>
+        {activeDragPost ? (
+          <div className="opacity-90 pointer-events-none">
+            <PostCard post={activeDragPost} />
           </div>
-        </div>
-      ) : (
-        <div className="flex-1 glass-card rounded-2xl flex flex-col overflow-hidden">
-          {/* Week headers */}
-          <div className="grid grid-cols-7 border-b border-white/[0.04] bg-white/[0.015]">
-            {weekDays.map(day => (
-              <div key={day} className="py-3 text-center text-xs font-medium text-muted-foreground border-r border-white/[0.04] last:border-0">
-                <span className="hidden md:inline">{day}</span>
-                <span className="md:hidden">{day.slice(0, 2)}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Calendar grid */}
-          <div className="flex-1 grid grid-cols-7 auto-rows-fr">
-            {calendarDays.slice(0, 42).map((day, idx) => (
-              <div key={idx}
-                className={`p-1.5 md:p-2 border-r border-b border-white/[0.03] transition-colors hover:bg-white/[0.02] ${!day.isCurrentMonth ? "opacity-30" : ""} ${day.isToday ? "bg-primary/[0.04]" : ""}`}>
-                <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1 ${day.isToday ? "bg-primary text-white shadow-md shadow-primary/30" : "text-foreground"}`}>
-                  {day.date}
-                </span>
-                <div className="space-y-0.5">
-                  {day.posts.slice(0, 2).map(post => {
-                    const color = PLATFORM_COLORS[post.platform] || "bg-gray-500 text-white";
-                    const icon = PLATFORM_ICONS[post.platform] || "?";
-                    return (
-                      <motion.div key={post.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                        className={`px-1.5 py-0.5 rounded-md text-[10px] font-medium flex items-center gap-1 ${color}`}>
-                        <span className="font-bold opacity-80 uppercase hidden lg:inline">{icon}</span>
-                        <span className="truncate">{post.title}</span>
-                      </motion.div>
-                    );
-                  })}
-                  {day.posts.length > 2 && (
-                    <span className="text-[9px] text-muted-foreground pl-1">+{day.posts.length - 2}</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 }
