@@ -133,6 +133,24 @@ model Post {
 
   content  Content   @relation(fields: [contentId], references: [id])
   comments Comment[]
+  analytics PostAnalytics[]
+}
+
+model PostAnalytics {
+  id          String   @id @default(cuid())
+  postId      String
+  impressions Int      @default(0)
+  reach       Int      @default(0)
+  likes       Int      @default(0)
+  comments    Int      @default(0)
+  shares      Int      @default(0)
+  clicks      Int      @default(0)
+  fetchedAt   DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, fetchedAt])
+  @@index([postId])
 }
 
 enum Platform {

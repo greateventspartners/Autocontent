@@ -36,6 +36,9 @@ export async function GET(request: Request) {
     postsByPlatform,
     postsByStatus,
     dailyPublishedPosts,
+    analyticsAgg,
+    platformReach,
+    topPosts,
   ] = await Promise.all([
     prisma.post.count({
       where: {
@@ -89,6 +92,45 @@ export async function GET(request: Request) {
       select: { publishedAt: true },
       orderBy: { publishedAt: "asc" },
     }),
+    prisma.postAnalytics.aggregate({
+      _sum: {
+        impressions: true,
+        reach: true,
+        likes: true,
+        comments: true,
+        shares: true,
+        clicks: true,
+      },
+      where: {
+        post: { content: { campaign: { workspaceId } } },
+      },
+    }),
+    prisma.postAnalytics.groupBy({
+      by: ["postId"],
+      _sum: { reach: true },
+      _max: { fetchedAt: true },
+      where: {
+        post: {
+          content: { campaign: { workspaceId } },
+          publishedAt: { gte: startDate },
+        },
+      },
+      orderBy: { _sum: { reach: "desc" } },
+      take: 5,
+    }),
+    prisma.postAnalytics.groupBy({
+      by: ["postId"],
+      _sum: { reach: true, impressions: true, likes: true, comments: true, shares: true },
+      _max: { fetchedAt: true },
+      where: {
+        post: {
+          content: { campaign: { workspaceId } },
+          status: "PUBLISHED",
+        },
+      },
+      orderBy: { _sum: { reach: "desc" } },
+      take: 3,
+    }),
   ]);
 
   const recentActivity = recentPosts.map((post) => ({
@@ -119,18 +161,72 @@ export async function GET(request: Request) {
     .map(([day, count]) => ({ day, count }))
     .sort((a, b) => a.day.localeCompare(b.day));
 
+  const totalReach = Number(analyticsAgg._sum.reach ?? 0);
+  const totalImpressions = Number(analyticsAgg._sum.impressions ?? 0);
+  const totalLikes = Number(analyticsAgg._sum.likes ?? 0);
+  const totalComments = Number(analyticsAgg._sum.comments ?? 0);
+  const totalShares = Number(analyticsAgg._sum.shares ?? 0);
+  const totalClicks = Number(analyticsAgg._sum.clicks ?? 0);
+
+  const engagement =
+    totalReach > 0
+      ? ((totalLikes + totalComments + totalShares) / totalReach) * 100
+      : 0;
+
+  const reachByPlatform = platformReach.map((item) => ({
+    postId: item.postId,
+    reach: Number(item._sum.reach ?? 0),
+  }));
+
+  const topPostsData = await Promise.all(
+    topPosts.map(async (row) => {
+      const post = await prisma.post.findUnique({
+        where: { id: row.postId },
+        select: {
+          id: true,
+          platform: true,
+          body: true,
+          publishedAt: true,
+          content: { select: { sourceIdea: true } },
+        },
+      });
+      if (!post) return null;
+      return {
+        id: post.id,
+        title: post.content.sourceIdea,
+        body: post.body.slice(0, 80),
+        platform: post.platform.toLowerCase(),
+        publishedAt: post.publishedAt?.toISOString() ?? null,
+        reach: Number(row._sum.reach ?? 0),
+        impressions: Number(row._sum.impressions ?? 0),
+        likes: Number(row._sum.likes ?? 0),
+        comments: Number(row._sum.comments ?? 0),
+        shares: Number(row._sum.shares ?? 0),
+      };
+    })
+  );
+
   return Response.json({
     stats: {
       publishedThisMonth,
       pendingApproval,
       totalContents,
       totalPosts,
+      totalReach,
+      totalImpressions,
+      engagement: Math.round(engagement * 10) / 10,
+      totalLikes,
+      totalComments,
+      totalShares,
+      totalClicks,
     },
     recentActivity,
     charts: {
       platformData,
       statusData,
       dailyData,
+      reachByPlatform,
     },
+    topPosts: topPostsData.filter(Boolean),
   });
 }

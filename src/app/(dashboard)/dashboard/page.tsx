@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { TrendingUp, FileText, CheckCircle2, Clock, AlertCircle, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { TrendingUp, FileText, CheckCircle2, Clock, AlertCircle, ArrowUpRight, ArrowDownRight, Eye, Heart, MessageCircle, Share2, MousePointerClick } from "lucide-react";
 import { motion, Variants } from "framer-motion";
 import {
   BarChart,
@@ -28,12 +28,32 @@ type ChartPlatform = { platform: string; count: number };
 type ChartStatus = { status: string; count: number };
 type ChartDaily = { day: string; count: number };
 
+type TopPost = {
+  id: string;
+  title: string;
+  body: string;
+  platform: string;
+  publishedAt: string | null;
+  reach: number;
+  impressions: number;
+  likes: number;
+  comments: number;
+  shares: number;
+};
+
 type DashboardData = {
   stats: {
     publishedThisMonth: number;
     pendingApproval: number;
     totalContents: number;
     totalPosts: number;
+    totalReach: number;
+    totalImpressions: number;
+    engagement: number;
+    totalLikes: number;
+    totalComments: number;
+    totalShares: number;
+    totalClicks: number;
   };
   recentActivity: Activity[];
   charts: {
@@ -41,6 +61,7 @@ type DashboardData = {
     statusData: ChartStatus[];
     dailyData: ChartDaily[];
   };
+  topPosts: TopPost[];
 };
 
 const statusConfig: Record<string, { icon: typeof CheckCircle2; color: string; bg: string }> = {
@@ -98,6 +119,12 @@ const itemVariants: Variants = {
 
 const PIE_COLORS = ["#6366f1", "#10b981", "#f59e0b", "#3b82f6", "#ef4444", "#ec4899", "#06b6d4", "#8b5cf6"];
 
+function formatNumber(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return n.toLocaleString();
+}
+
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -143,40 +170,36 @@ export default function Dashboard() {
 
   const stats = [
     {
-      title: "Publications ce mois",
-      value: data!.stats.publishedThisMonth,
-      icon: TrendingUp,
+      title: "Portée totale",
+      value: data!.stats.totalReach,
+      icon: Eye,
       color: "text-primary",
       bg: "bg-primary/10",
-      trend: "+12%",
-      trendUp: true,
+      format: "number" as const,
     },
     {
-      title: "En attente",
-      value: data!.stats.pendingApproval,
-      icon: Clock,
-      color: "text-amber-400",
-      bg: "bg-amber-500/10",
-      trend: "-3",
-      trendUp: false,
-    },
-    {
-      title: "Total contenus",
-      value: data!.stats.totalContents,
-      icon: FileText,
-      color: "text-blue-400",
-      bg: "bg-blue-500/10",
-      trend: "+28",
-      trendUp: true,
-    },
-    {
-      title: "Total publications",
-      value: data!.stats.totalPosts,
-      icon: CheckCircle2,
+      title: "Taux d'engagement",
+      value: data!.stats.engagement,
+      icon: TrendingUp,
       color: "text-emerald-400",
       bg: "bg-emerald-500/10",
-      trend: "+156",
-      trendUp: true,
+      format: "percent" as const,
+    },
+    {
+      title: "Likes",
+      value: data!.stats.totalLikes,
+      icon: Heart,
+      color: "text-pink-400",
+      bg: "bg-pink-500/10",
+      format: "number" as const,
+    },
+    {
+      title: "Publications",
+      value: data!.stats.totalPosts,
+      icon: CheckCircle2,
+      color: "text-blue-400",
+      bg: "bg-blue-500/10",
+      format: "number" as const,
     },
   ];
 
@@ -202,38 +225,34 @@ export default function Dashboard() {
       initial="hidden"
       animate="show"
     >
-      {/* Page Header */}
       <motion.div variants={itemVariants}>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground mt-1">Vue d&apos;ensemble de votre activité.</p>
       </motion.div>
 
-      {/* Stat Cards — 4-column grid */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {stats.map((stat, i) => (
           <div key={i} className="glass-card rounded-2xl p-5 relative overflow-hidden group hover:border-white/10 transition-all duration-300">
             <div className="absolute -right-8 -top-8 w-28 h-28 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-              style={{ background: i === 0 ? "rgba(99,102,241,0.15)" : i === 1 ? "rgba(245,158,11,0.15)" : i === 2 ? "rgba(59,130,246,0.15)" : "rgba(16,185,129,0.15)" }} />
+              style={{ background: i === 0 ? "rgba(99,102,241,0.15)" : i === 1 ? "rgba(16,185,129,0.15)" : i === 2 ? "rgba(236,72,153,0.15)" : "rgba(59,130,246,0.15)" }} />
             <div className="flex items-center justify-between mb-4 relative z-10">
               <div className={`p-2.5 rounded-xl ${stat.bg}`}>
                 <stat.icon className={stat.color} size={20} />
               </div>
-              <div className={`flex items-center gap-1 text-xs font-medium ${stat.trendUp ? "text-emerald-400" : "text-slate-400"}`}>
-                {stat.trendUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                {stat.trend}
-              </div>
             </div>
             <div className="relative z-10">
-              <p className="text-3xl font-bold tracking-tight">{stat.value.toLocaleString()}</p>
+              <p className="text-3xl font-bold tracking-tight">
+                {stat.format === "percent"
+                  ? `${stat.value}%`
+                  : formatNumber(stat.value)}
+              </p>
               <p className="text-muted-foreground text-sm mt-1">{stat.title}</p>
             </div>
           </div>
         ))}
       </motion.div>
 
-      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Bar Chart — 2/3 width */}
         <motion.div variants={itemVariants} className="lg:col-span-2 glass-card rounded-2xl p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -293,7 +312,6 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* Pie Chart — Platform distribution */}
         <motion.div variants={itemVariants} className="glass-card rounded-2xl p-6 flex flex-col">
           <div className="mb-6">
             <h3 className="text-lg font-bold">Par plateforme</h3>
@@ -351,9 +369,7 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      {/* Bottom Row — Activity Feed + Status Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Activity Feed */}
         <motion.div variants={itemVariants} className="lg:col-span-2 glass-card rounded-2xl p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -381,8 +397,8 @@ export default function Dashboard() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{activity.title}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${PLATFORM_BADGE[activity.id] || "bg-white/5 text-muted-foreground border-white/10"}`}>
-                          {platformNames[activity.id] || activity.id}
+                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${PLATFORM_BADGE[activity.platform] || "bg-white/5 text-muted-foreground border-white/10"}`}>
+                          {activity.platformLabel}
                         </span>
                         <span className="text-xs text-muted-foreground">{activity.time}</span>
                       </div>
@@ -395,7 +411,6 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* Status Pie Chart */}
         <motion.div variants={itemVariants} className="glass-card rounded-2xl p-6 flex flex-col">
           <div className="mb-6">
             <h3 className="text-lg font-bold">Par statut</h3>
@@ -463,6 +478,56 @@ export default function Dashboard() {
           )}
         </motion.div>
       </div>
+
+      {data!.topPosts && data!.topPosts.length > 0 && (
+        <motion.div variants={itemVariants} className="glass-card rounded-2xl p-6">
+          <div className="mb-6">
+            <h3 className="text-lg font-bold">Top posts</h3>
+            <p className="text-sm text-muted-foreground mt-0.5">Vos publications les plus performantes</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Post</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Plateforme</th>
+                  <th className="text-right py-3 px-4 text-muted-foreground font-medium">Portée</th>
+                  <th className="text-right py-3 px-4 text-muted-foreground font-medium">Impressions</th>
+                  <th className="text-right py-3 px-4 text-muted-foreground font-medium">
+                    <span className="flex items-center justify-end gap-1"><Heart size={14} /></span>
+                  </th>
+                  <th className="text-right py-3 px-4 text-muted-foreground font-medium">
+                    <span className="flex items-center justify-end gap-1"><MessageCircle size={14} /></span>
+                  </th>
+                  <th className="text-right py-3 px-4 text-muted-foreground font-medium">
+                    <span className="flex items-center justify-end gap-1"><Share2 size={14} /></span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {data!.topPosts.map((post) => (
+                  <tr key={post.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                    <td className="py-3 px-4">
+                      <p className="font-medium truncate max-w-[240px]">{post.title}</p>
+                      <p className="text-muted-foreground text-xs truncate max-w-[240px] mt-0.5">{post.body}</p>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${PLATFORM_BADGE[post.platform] || "bg-white/5 text-muted-foreground border-white/10"}`}>
+                        {platformNames[post.platform] || post.platform}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right font-medium">{formatNumber(post.reach)}</td>
+                    <td className="py-3 px-4 text-right font-medium">{formatNumber(post.impressions)}</td>
+                    <td className="py-3 px-4 text-right font-medium">{formatNumber(post.likes)}</td>
+                    <td className="py-3 px-4 text-right font-medium">{formatNumber(post.comments)}</td>
+                    <td className="py-3 px-4 text-right font-medium">{formatNumber(post.shares)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      )}
     </motion.div>
   );
 }

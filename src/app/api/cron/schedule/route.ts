@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { publishPost } from "@/lib/publishers";
+import { fetchMetrics, SUPPORTED_ANALYTICS_PLATFORMS } from "@/lib/analytics";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -60,6 +61,44 @@ export async function GET(request: Request) {
           where: { id: post.contentId },
           data: { status: "PUBLISHED" },
         });
+
+        if (
+          result.platformPostId &&
+          SUPPORTED_ANALYTICS_PLATFORMS.includes(post.platform as any)
+        ) {
+          const connection = await prisma.platformConnection.findUnique({
+            where: {
+              workspaceId_platform: {
+                workspaceId: post.content.campaign.workspaceId,
+                platform: post.platform,
+              },
+            },
+          });
+          if (connection) {
+            try {
+              const metrics = await fetchMetrics(
+                post.platform,
+                connection.accessToken,
+                result.platformPostId
+              );
+              if (metrics) {
+                await prisma.postAnalytics.create({
+                  data: {
+                    postId: post.id,
+                    impressions: metrics.impressions,
+                    reach: metrics.reach,
+                    likes: metrics.likes,
+                    comments: metrics.comments,
+                    shares: metrics.shares,
+                    clicks: metrics.clicks,
+                  },
+                });
+              }
+            } catch {
+              // analytics fetch failure is non-blocking
+            }
+          }
+        }
       } else {
         await prisma.post.update({
           where: { id: post.id },
