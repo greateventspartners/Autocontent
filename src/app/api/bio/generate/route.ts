@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithFallback } from "@/lib/gemini";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BIO_PLATFORMS } from "@/lib/bio-platforms";
@@ -42,10 +42,6 @@ export async function POST(request: Request) {
   }
 
   const brandKit = await getBrandKit(workspaceId);
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return Response.json({ error: "GEMINI_API_KEY manquante" }, { status: 500 });
-  }
 
   let system =
     "Tu es un expert en personal branding. Tu génères des bios de profil cohérentes avec l'identité de marque du client, en proposant 2 variations par plateforme.";
@@ -61,18 +57,11 @@ Plateformes:
 ${platformBlock}`;
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
-      systemInstruction: system,
-    });
-
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: "application/json" },
-    });
-
-    const text = result.response.text();
+    const { text } = await generateWithFallback(
+      { contents: [{ role: "user", parts: [{ text: prompt }] }] },
+      system,
+      { responseMimeType: "application/json" },
+    );
     const parsed = JSON.parse(text) as { bios?: Record<string, string[]> };
     return Response.json({ bios: parsed.bios ?? {} });
   } catch {

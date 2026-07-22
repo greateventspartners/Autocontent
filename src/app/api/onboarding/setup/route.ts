@@ -1,8 +1,8 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { BIO_PLATFORMS } from "@/lib/bio-platforms";
+import { generateWithFallback } from "@/lib/gemini";
 
 async function getUserWorkspaceId(userId: string) {
   const membership = await prisma.workspaceMember.findFirst({
@@ -55,44 +55,29 @@ export async function POST(request: Request) {
     });
 
     let bios: Record<string, string[]> = {};
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey) {
-      try {
-        let system =
-          "Tu es un expert en personal branding. Tu génères des bios de profil cohérentes avec l'identité de marque du client, en proposant 2 variations par plateforme.";
-        if (body.name) system += `\nNom de la marque: ${body.name}`;
-        if (body.toneOfVoice)
-          system += `\nTon de voix: ${body.toneOfVoice}`;
-        if (body.doAndDonts)
-          system += `\nContraintes: ${body.doAndDonts}`;
-        if (body.keywords)
-          system += `\nMots-clés à intégrer naturellement: ${body.keywords}`;
+    try {
+      let system =
+        "Tu es un expert en personal branding. Tu génères des bios de profil cohérentes avec l'identité de marque du client, en proposant 2 variations par plateforme.";
+      if (body.name) system += `\nNom de la marque: ${body.name}`;
+      if (body.toneOfVoice) system += `\nTon de voix: ${body.toneOfVoice}`;
+      if (body.doAndDonts) system += `\nContraintes: ${body.doAndDonts}`;
+      if (body.keywords) system += `\nMots-clés à intégrer naturellement: ${body.keywords}`;
 
-        const platformBlock = BIO_PLATFORMS.map(
-          (p) => `- ${p.id}: ${p.instruction}`
-        ).join("\n");
-        const prompt = `Génère 2 variations de bio pour chaque plateforme.
+      const platformBlock = BIO_PLATFORMS.map((p) => `- ${p.id}: ${p.instruction}`).join("\n");
+      const prompt = `Génère 2 variations de bio pour chaque plateforme.
 Réponds en JSON strict: { "bios": { "plateforme": ["variation 1", "variation 2"] } }.
 Plateformes:
 ${platformBlock}`;
 
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({
-          model: "gemini-2.0-flash",
-          systemInstruction: system,
-        });
-
-        const result = await model.generateContent({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json" },
-        });
-
-        const text = result.response.text();
-        const parsed = JSON.parse(text) as { bios?: Record<string, string[]> };
-        bios = parsed.bios ?? {};
-      } catch {
-        /* La génération de bios n'est pas bloquante */
-      }
+      const { text } = await generateWithFallback(
+        { contents: [{ role: "user", parts: [{ text: prompt }] }] },
+        system,
+        { responseMimeType: "application/json" },
+      );
+      const parsed = JSON.parse(text) as { bios?: Record<string, string[]> };
+      bios = parsed.bios ?? {};
+    } catch {
+      /* La génération de bios n'est pas bloquante */
     }
 
     await prisma.brandKit.update({

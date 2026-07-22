@@ -1,11 +1,44 @@
 import { GoogleGenerativeAI, type GenerateContentRequest } from "@google/generative-ai";
 
+const FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+const MAX_RETRIES = 2;
+
 function getGenAI() {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey === "votre-cle-api-gemini") {
     return null;
   }
   return new GoogleGenerativeAI(apiKey);
+}
+
+export async function generateWithFallback(
+  request: GenerateContentRequest,
+  systemInstruction?: string,
+  generationConfig?: Record<string, unknown>,
+): Promise<{ text: string; model: string }> {
+  const genAI = getGenAI();
+  if (!genAI) throw new Error("GEMINI_API_KEY non configurée");
+
+  for (const modelName of FALLBACK_MODELS) {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          ...(systemInstruction ? { systemInstruction } : {}),
+          ...(generationConfig ? { generationConfig } : {}),
+        });
+        const result = await model.generateContent(request);
+        const text = result.response.text();
+        if (text) return { text, model: modelName };
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "";
+        const isQuota = msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED");
+        if (!isQuota || attempt === MAX_RETRIES) break;
+        await new Promise((r) => setTimeout(r, (attempt + 1) * 1500));
+      }
+    }
+  }
+  throw new Error("Tous les modèles Gemini sont indisponibles (quota dépassé). Réessayez dans quelques minutes.");
 }
 
 type PlatformConfig = {
@@ -155,10 +188,6 @@ export async function generateContent(
   const genAI = getGenAI();
 
   if (!genAI) {
-    console.log(`[Gemini fallback] Plateforme: ${platform}`);
-    console.log(`[Gemini fallback] Prompt: ${prompt}`);
-    if (image) console.log(`[Gemini fallback] Image: ${image.mimeType}`);
-
     const mockContent = `[Contenu simulé — clé Gemini non configurée]\n\nPlateforme: ${platform}\n\n${prompt.slice(0, 500)}`;
     return {
       content: mockContent,
@@ -166,17 +195,6 @@ export async function generateContent(
       model: "mock",
     };
   }
-
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
-    systemInstruction,
-    generationConfig: {
-      temperature: 0.8,
-      topP: 0.9,
-      topK: 40,
-      maxOutputTokens: config.maxOutput || 1024,
-    },
-  });
 
   const parts: GenerateContentRequest["contents"][0]["parts"] = [
     { text: prompt },
@@ -192,31 +210,24 @@ export async function generateContent(
   }
 
   const request: GenerateContentRequest = {
-    contents: [
-      {
-        role: "user",
-        parts,
-      },
-    ],
+    contents: [{ role: "user", parts }],
   };
 
   try {
-    const result = await model.generateContent(request);
-    const response = result.response;
-    const text = response.text();
-
-    if (!text) {
-      throw new Error("Gemini n'a pas généré de contenu");
-    }
+    const { text, model: usedModel } = await generateWithFallback(request, systemInstruction, {
+      temperature: 0.8,
+      topP: 0.9,
+      topK: 40,
+      maxOutputTokens: config.maxOutput || 1024,
+    });
 
     return {
       content: text,
       platform,
-      model: "gemini-2.0-flash",
+      model: usedModel,
     };
   } catch (err: unknown) {
     console.error(`[Gemini] Erreur API:`, err);
-    console.log(`[Gemini fallback] Mode simulation — Plateforme: ${platform}`);
     const mockContent = `[Contenu simulé — Gemini indisponible]\n\nPlateforme: ${platform}\n\n${prompt.slice(0, 500)}`;
     return {
       content: mockContent,

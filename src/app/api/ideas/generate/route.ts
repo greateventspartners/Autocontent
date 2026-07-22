@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithFallback } from "@/lib/gemini";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -37,10 +37,6 @@ export async function POST(request: Request) {
   }
 
   const brandKit = await getBrandKit(workspaceId);
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return Response.json({ error: "GEMINI_API_KEY manquante" }, { status: 500 });
-  }
 
   let system =
     "Tu es un stratège de contenu social media. Tu proposes des idées de contenus pertinentes, variées et accrocheuses.";
@@ -52,13 +48,11 @@ export async function POST(request: Request) {
 Réponds en JSON strict: { "ideas": [ { "title": "titre de l'idée", "platform": "linkedin|twitter|instagram|facebook|tiktok|pinterest|wordpress|medium", "angle": "angle éditorial en une phrase", "hook": "accroche courte et percutante" } ] }.`;
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", systemInstruction: system });
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: "application/json" },
-    });
-    const text = result.response.text();
+    const { text } = await generateWithFallback(
+      { contents: [{ role: "user", parts: [{ text: prompt }] }] },
+      system,
+      { responseMimeType: "application/json" },
+    );
     const parsed = JSON.parse(text) as { ideas?: Array<{ title: string; platform: string; angle: string; hook: string }> };
     return Response.json({ ideas: parsed.ideas ?? [] });
   } catch {
