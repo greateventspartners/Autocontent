@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { CheckCircle, XCircle, MessageSquare, Link as LinkIcon, AlertCircle, Share2, Send, Clock } from "lucide-react";
+import { CheckCircle, XCircle, MessageSquare, Link as LinkIcon, AlertCircle, Share2, Send, Clock, Sparkles } from "lucide-react";
+import ScheduleSuggestion from "@/components/calendar/ScheduleSuggestion";
 import { motion, AnimatePresence } from "framer-motion";
 
 type ApprovalPost = {
@@ -395,6 +396,26 @@ export default function ApprovalsPage() {
                       </button>
                     </div>
 
+                    <ScheduleSuggestion
+                      platform={post.platform.toLowerCase()}
+                      excludeId={post.id}
+                      onSchedule={async (date, time) => {
+                        setScheduleLoading(post.id);
+                        try {
+                          await fetch(`/api/posts/${post.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ scheduledAt: `${date}T${time}:00.000Z`, status: "SCHEDULED" }),
+                          });
+                          setPosts((prev) => prev.filter((p) => p.id !== post.id));
+                        } catch {
+                          setError("Erreur lors de la planification");
+                        } finally {
+                          setScheduleLoading(null);
+                        }
+                      }}
+                    />
+
                     <div className="flex gap-3">
                       <button
                         onClick={() => handleAction(post.id, "REJECTED")}
@@ -462,6 +483,26 @@ export default function ApprovalsPage() {
                         {scheduleLoading === post.id ? "…" : "Planifier"}
                       </button>
                     </div>
+
+                    <ScheduleSuggestion
+                      platform={post.platform.toLowerCase()}
+                      excludeId={post.id}
+                      onSchedule={async (date, time) => {
+                        setScheduleLoading(post.id);
+                        try {
+                          await fetch(`/api/posts/${post.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ scheduledAt: `${date}T${time}:00.000Z`, status: "SCHEDULED" }),
+                          });
+                          setPosts((prev) => prev.filter((p) => p.id !== post.id));
+                        } catch {
+                          setError("Erreur lors de la planification");
+                        } finally {
+                          setScheduleLoading(null);
+                        }
+                      }}
+                    />
                   </div>
                 )}
                 </div>

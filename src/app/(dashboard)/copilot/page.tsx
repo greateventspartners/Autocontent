@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Sparkles, Image as ImageIcon, Link as LinkIcon, Send, Share2, MessageCircle, Camera, ThumbsUp, Music, Grid3x3, Globe, BookOpen, AlertCircle, Copy, ExternalLink, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Linkify from "@/components/Linkify";
+import ScheduleSuggestion from "@/components/calendar/ScheduleSuggestion";
 import { getComposerUrl } from "@/lib/publishers/composers";
 
 type Platform = {
@@ -62,6 +63,7 @@ function CopilotContent() {
   const [savedId, setSavedId] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [publishMsg, setPublishMsg] = useState<string | null>(null);
+  const [scheduleMsg, setScheduleMsg] = useState<string | null>(null);
   const [copiedMsg, setCopiedMsg] = useState(false);
   const [urlOpen, setUrlOpen] = useState(false);
   const [urlInput, setUrlInput] = useState("");
@@ -156,6 +158,21 @@ function CopilotContent() {
       } else { setPublishMsg(data.result?.error || "Publication impossible."); }
     } catch { setPublishMsg("Erreur réseau lors de la publication."); }
     finally { setPublishing(false); }
+  };
+
+  const handleSchedule = async (date: string, time: string) => {
+    if (!savedId) return;
+    try {
+      await fetch(`/api/posts/${savedId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduledAt: `${date}T${time}:00.000Z`, status: "SCHEDULED" }),
+      });
+      setScheduleMsg("Post planifié avec succès !");
+      setTimeout(() => setScheduleMsg(null), 3000);
+    } catch {
+      setScheduleMsg("Erreur lors de la planification");
+    }
   };
 
   const currentPlatform = platforms.find((p) => p.id === activeTab);
@@ -277,6 +294,16 @@ function CopilotContent() {
                     </button>
                   </div>
                   {publishMsg && <p className="text-[11px] text-emerald-400 text-center">{publishMsg}</p>}
+                  {scheduleMsg && <p className="text-[11px] text-primary text-center">{scheduleMsg}</p>}
+                  {savedId && (
+                    <div className="pt-2">
+                      <ScheduleSuggestion
+                        platform={activeTab}
+                        excludeId={savedId}
+                        onSchedule={handleSchedule}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>

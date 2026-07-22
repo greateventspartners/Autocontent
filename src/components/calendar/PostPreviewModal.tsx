@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, ExternalLink, Trash2, Clock, Send } from "lucide-react";
+import { X, ExternalLink, Trash2, Clock, Send, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PLATFORM_COLORS, PLATFORM_ICONS, PLATFORM_LABELS, STATUS_COLORS, STATUS_LABELS, type CalendarPost } from "./types";
+import ScheduleSuggestion from "./ScheduleSuggestion";
 
 interface PostPreviewModalProps {
   post: CalendarPost;
@@ -13,6 +14,7 @@ interface PostPreviewModalProps {
 
 export default function PostPreviewModal({ post, onClose, onDeleted }: PostPreviewModalProps) {
   const [deleting, setDeleting] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
 
   const platform = post.platform.toLowerCase();
   const color = PLATFORM_COLORS[platform] || "bg-gray-500 text-white";
@@ -53,6 +55,20 @@ export default function PostPreviewModal({ post, onClose, onDeleted }: PostPrevi
       onClose();
     } catch {
       // silencieux
+    }
+  };
+
+  const handleSchedule = async (date: string, time: string) => {
+    setScheduling(true);
+    try {
+      await fetch(`/api/posts/${post.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduledAt: `${date}T${time}:00.000Z`, status: "SCHEDULED" }),
+      });
+      onClose();
+    } finally {
+      setScheduling(false);
     }
   };
 
@@ -122,6 +138,15 @@ export default function PostPreviewModal({ post, onClose, onDeleted }: PostPrevi
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Clock size={14} />
                 <span>Planifié le {scheduledDate}</span>
+              </div>
+            )}
+            {!scheduledDate && post.status !== "PUBLISHED" && (
+              <div className="pt-2">
+                <ScheduleSuggestion
+                  platform={platform}
+                  excludeId={post.id}
+                  onSchedule={handleSchedule}
+                />
               </div>
             )}
           </div>
