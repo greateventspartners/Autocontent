@@ -9,16 +9,22 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  password  String
-  role      Role     @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String      @id @default(cuid())
+  email        String      @unique
+  name         String?
+  password     String?
+  authProvider AuthProvider @default(LOCAL)
+  role         Role        @default(USER)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
   workspaces WorkspaceMember[]
   comments   Comment[]
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
 }
 
 enum Role {
@@ -27,15 +33,16 @@ enum Role {
 }
 
 model Workspace {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  name                 String
+  onboardingCompleted  Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  members            WorkspaceMember[]
-  brandKits          BrandKit[]
-  campaigns          Campaign[]
-  invitations        Invitation[]
+  members             WorkspaceMember[]
+  brandKits           BrandKit[]
+  campaigns           Campaign[]
+  invitations         Invitation[]
   platformConnections PlatformConnection[]
 }
 
@@ -68,6 +75,7 @@ model BrandKit {
   toneOfVoice  String?
   doAndDonts   String?
   voiceSamples Json?
+  bios         Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

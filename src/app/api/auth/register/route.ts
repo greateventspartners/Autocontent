@@ -69,6 +69,7 @@ export async function POST(request: Request) {
         name: newUser.name,
         role: newUser.role,
       },
+      redirect: "/onboarding",
     });
   } catch (error: any) {
     console.error("Register error:", error?.message, error?.name, error?.stack?.substring(0, 500));

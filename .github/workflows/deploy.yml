@@ -1,23 +1,17 @@
-name: Deploy to Cloudflare
+name: Deploy to Cloudflare Workers
 
 on:
   push:
-    branches: [master, main]
+    branches: [master]
   workflow_dispatch:
-
-concurrency:
-  group: deploy-cloudflare
-  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
@@ -25,59 +19,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply database migrations
-        run: npx prisma migrate deploy
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - name: Generate Prisma client
+        run: npx prisma generate
 
-      - name: Build for Cloudflare
-        run: npx opennextjs-cloudflare build
+      - name: Build & deploy to Cloudflare Workers
+        run: npm run deploy
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          LINKEDIN_CLIENT_ID: ${{ secrets.LINKEDIN_CLIENT_ID }}
-          LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
-          LINKEDIN_REDIRECT_URI: ${{ secrets.LINKEDIN_REDIRECT_URI }}
-          FACEBOOK_APP_ID: ${{ secrets.FACEBOOK_APP_ID }}
-          FACEBOOK_APP_SECRET: ${{ secrets.FACEBOOK_APP_SECRET }}
-          FACEBOOK_REDIRECT_URI: ${{ secrets.FACEBOOK_REDIRECT_URI }}
-          INSTAGRAM_APP_ID: ${{ secrets.INSTAGRAM_APP_ID }}
-          INSTAGRAM_APP_SECRET: ${{ secrets.INSTAGRAM_APP_SECRET }}
-          INSTAGRAM_REDIRECT_URI: ${{ secrets.INSTAGRAM_REDIRECT_URI }}
-          TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
-          TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
-          TIKTOK_REDIRECT_URI: ${{ secrets.TIKTOK_REDIRECT_URI }}
-          PINTEREST_APP_ID: ${{ secrets.PINTEREST_APP_ID }}
-          PINTEREST_APP_SECRET: ${{ secrets.PINTEREST_APP_SECRET }}
-          PINTEREST_REDIRECT_URI: ${{ secrets.PINTEREST_REDIRECT_URI }}
-          WORDPRESS_CLIENT_ID: ${{ secrets.WORDPRESS_CLIENT_ID }}
-          WORDPRESS_CLIENT_SECRET: ${{ secrets.WORDPRESS_CLIENT_SECRET }}
-          WORDPRESS_REDIRECT_URI: ${{ secrets.WORDPRESS_REDIRECT_URI }}
-          MEDIUM_CLIENT_ID: ${{ secrets.MEDIUM_CLIENT_ID }}
-          MEDIUM_CLIENT_SECRET: ${{ secrets.MEDIUM_CLIENT_SECRET }}
-          MEDIUM_REDIRECT_URI: ${{ secrets.MEDIUM_REDIRECT_URI }}
-          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
-          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
-          YOUTUBE_REDIRECT_URI: ${{ secrets.YOUTUBE_REDIRECT_URI }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
-
-      - name: Patch build output (INSTRUMENTATION)
-        run: node scripts/patch-build-output.js
-
-      - name: Patch build output (Prisma WASM)
-        run: node scripts/patch-prisma-wasm.js
-
-      - name: Deploy to Cloudflare
-        run: npx wrangler deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      - name: Set Cloudflare secrets
-        run: |
-          echo "${{ secrets.CRON_SECRET }}" | npx wrangler secret put CRON_SECRET
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

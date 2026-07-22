@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     totalPosts,
     postsByPlatform,
     postsByStatus,
-    dailyPublished,
+    dailyPublishedPosts,
   ] = await Promise.all([
     prisma.post.count({
       where: {
@@ -80,19 +80,15 @@ export async function GET(request: Request) {
         content: { campaign: { workspaceId } },
       },
     }),
-    prisma.$queryRawUnsafe<{ day: string; count: bigint }[]>(
-      `SELECT DATE(p."publishedAt") as day, COUNT(*) as count
-       FROM "Post" p
-       JOIN "Content" c ON p."contentId" = c.id
-       JOIN "Campaign" ca ON c."campaignId" = ca.id
-       WHERE ca."workspaceId" = $1
-         AND p."status" = 'PUBLISHED'
-         AND p."publishedAt" >= $2
-       GROUP BY DATE(p."publishedAt")
-       ORDER BY day ASC`,
-      workspaceId,
-      startDate,
-    ),
+    prisma.post.findMany({
+      where: {
+        content: { campaign: { workspaceId } },
+        status: "PUBLISHED",
+        publishedAt: { gte: startDate },
+      },
+      select: { publishedAt: true },
+      orderBy: { publishedAt: "asc" },
+    }),
   ]);
 
   const recentActivity = recentPosts.map((post) => ({
@@ -113,10 +109,15 @@ export async function GET(request: Request) {
     count: Number(item._count.id),
   }));
 
-  const dailyData = dailyPublished.map((item) => ({
-    day: item.day,
-    count: Number(item.count),
-  }));
+  const dailyMap = new Map<string, number>();
+  for (const post of dailyPublishedPosts) {
+    if (!post.publishedAt) continue;
+    const day = post.publishedAt.toISOString().slice(0, 10);
+    dailyMap.set(day, (dailyMap.get(day) || 0) + 1);
+  }
+  const dailyData = Array.from(dailyMap.entries())
+    .map(([day, count]) => ({ day, count }))
+    .sort((a, b) => a.day.localeCompare(b.day));
 
   return Response.json({
     stats: {

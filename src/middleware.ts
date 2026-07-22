@@ -9,6 +9,7 @@ const authPaths = ["/", "/login", "/register", "/forgot-password"];
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSession = request.cookies.has(COOKIE_NAME);
+  const onboardingDone = request.cookies.has("onboarding_done");
 
   if (protectedPaths.some((p) => pathname.startsWith(p)) && !hasSession) {
     const loginUrl = new URL("/", request.url);
@@ -17,6 +18,11 @@ export function middleware(request: NextRequest) {
   }
 
   if (authPaths.includes(pathname) && hasSession) {
+    const dest = onboardingDone ? "/dashboard" : "/onboarding";
+    return NextResponse.redirect(new URL(dest, request.url));
+  }
+
+  if (pathname === "/onboarding" && hasSession && onboardingDone) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
