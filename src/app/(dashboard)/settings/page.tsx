@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Settings, Globe, Check, Users, Copy, UserPlus, AlertCircle, Shield, User, Eye } from "lucide-react";
+import { Settings, Globe, Check, Users, Copy, UserPlus, AlertCircle, Shield, User, Eye, X } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Platform {
@@ -32,14 +32,23 @@ type Member = {
 
 const roleLabels: Record<string, string> = {
   OWNER: "Propriétaire",
+  ADMIN: "Administrateur",
   EDITOR: "Éditeur",
-  CLIENT: "Client",
+  VIEWER: "Lecteur",
 };
 
 const roleIcons: Record<string, React.ElementType> = {
   OWNER: Shield,
+  ADMIN: Shield,
   EDITOR: User,
-  CLIENT: Eye,
+  VIEWER: Eye,
+};
+
+const roleDescriptions: Record<string, string> = {
+  OWNER: "Contrôle total du workspace",
+  ADMIN: "Gère les membres et les paramètres",
+  EDITOR: "Crée et édite le contenu",
+  VIEWER: "Consulte uniquement",
 };
 
 const platformOAuthMap: Record<string, string> = {
@@ -80,6 +89,7 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
   const [platformUsers, setPlatformUsers] = useState<Record<string, string | null>>({});
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
+  const [updatingRole, setUpdatingRole] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -240,6 +250,44 @@ export default function SettingsPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleRoleChange = async (memberId: string, newRole: string) => {
+    setUpdatingRole(memberId);
+    try {
+      const res = await fetch(`/api/workspaces/members/${memberId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      });
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        throw new Error(data.error || "Erreur lors de la mise à jour du rôle");
+      }
+      setMembers((prev) =>
+        prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m))
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur lors de la mise à jour du rôle");
+    } finally {
+      setUpdatingRole(null);
+    }
+  };
+
+  const handleRemoveMember = async (memberId: string) => {
+    if (!confirm("Êtes-vous sûr de vouloir retirer ce membre ?")) return;
+    try {
+      const res = await fetch(`/api/workspaces/members/${memberId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        throw new Error(data.error || "Erreur lors du retrait du membre");
+      }
+      setMembers((prev) => prev.filter((m) => m.id !== memberId));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur lors du retrait du membre");
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-12">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -285,6 +333,7 @@ export default function SettingsPage() {
             <div className="space-y-3 mb-6">
               {members.map((member) => {
                 const RoleIcon = roleIcons[member.role] || User;
+                const isOwner = member.role === "OWNER";
                 return (
                   <div key={member.id} className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/5">
                     <div className="flex items-center gap-3">
@@ -296,11 +345,36 @@ export default function SettingsPage() {
                       <div>
                         <p className="font-medium text-sm">{member.user.name || member.user.email}</p>
                         <p className="text-xs text-muted-foreground">{member.user.email}</p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">{roleDescriptions[member.role]}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <RoleIcon size={14} />
-                      <span>{roleLabels[member.role] || member.role}</span>
+                    <div className="flex items-center gap-2">
+                      {isOwner ? (
+                        <div className="flex items-center gap-1.5 text-xs text-amber-400 px-2 py-1 rounded-lg bg-amber-500/10">
+                          <Shield size={12} />
+                          <span>Propriétaire</span>
+                        </div>
+                      ) : (
+                        <>
+                          <select
+                            value={member.role}
+                            onChange={(e) => handleRoleChange(member.id, e.target.value)}
+                            disabled={updatingRole === member.id}
+                            className="p-1.5 bg-white/5 border border-white/10 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 disabled:opacity-50"
+                          >
+                            <option value="ADMIN">Admin</option>
+                            <option value="EDITOR">Éditeur</option>
+                            <option value="VIEWER">Lecteur</option>
+                          </select>
+                          <button
+                            onClick={() => handleRemoveMember(member.id)}
+                            className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                            title="Retirer du workspace"
+                          >
+                            <X size={14} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
@@ -327,8 +401,9 @@ export default function SettingsPage() {
                 onChange={(e) => setInviteRole(e.target.value)}
                 className="p-3 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
+                <option value="ADMIN">Administrateur</option>
                 <option value="EDITOR">Éditeur</option>
-                <option value="CLIENT">Client</option>
+                <option value="VIEWER">Lecteur</option>
               </select>
               <button
                 onClick={handleInvite}

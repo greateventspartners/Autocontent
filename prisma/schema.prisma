@@ -51,8 +51,9 @@ model Workspace {
 
 enum WorkspaceRole {
   OWNER
+  ADMIN
   EDITOR
-  CLIENT
+  VIEWER
 }
 
 model WorkspaceMember {
@@ -203,12 +204,16 @@ model Comment {
   postId    String
   userId    String
   text      String
+  parentId  String?
   createdAt DateTime @default(now())
 
-  post Post @relation(fields: [postId], references: [id])
-  user User @relation(fields: [userId], references: [id])
+  post   Post    @relation(fields: [postId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
+  parent Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies Comment[] @relation("CommentReplies")
 
   @@index([postId])
+  @@index([parentId])
 }
 
 model Invitation {
