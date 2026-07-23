@@ -249,3 +249,21 @@ export async function generateContent(
     };
   }
 }
+
+export async function generateRepurpose(prompt: string): Promise<string> {
+  const request: GenerateContentRequest = {
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+  };
+
+  const { text } = await generateWithFallback(request, "Tu es un expert en transformation de contenu pour les réseaux sociaux.", {
+    temperature: 0.7,
+    maxOutputTokens: 4096,
+  });
+
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error("Pas de JSON valide dans la réponse Gemini");
+  }
+
+  return jsonMatch[0];
+}

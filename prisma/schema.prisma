@@ -46,6 +46,7 @@ model Workspace {
   platformConnections PlatformConnection[]
   insights            ContentInsight[]
   documents           Document[]
+  repurposeJobs       RepurposeJob[]
 }
 
 enum WorkspaceRole {
@@ -106,6 +107,22 @@ model Document {
   tags        String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+model RepurposeJob {
+  id           String   @id @default(cuid())
+  workspaceId  String
+  sourceText   String
+  sourceTitle  String?
+  targetPlatforms String
+  results      Json?
+  status       String   @default("pending")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 

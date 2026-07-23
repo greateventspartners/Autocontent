@@ -2,12 +2,13 @@
 
 import React, { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { Sparkles, Image as ImageIcon, Link as LinkIcon, Send, Share2, MessageCircle, Camera, ThumbsUp, Music, Grid3x3, Globe, BookOpen, AlertCircle, Copy, ExternalLink, Zap, Wand2 } from "lucide-react";
+import { Sparkles, Image as ImageIcon, Link as LinkIcon, Send, Share2, MessageCircle, Camera, ThumbsUp, Music, Grid3x3, Globe, BookOpen, AlertCircle, Copy, ExternalLink, Zap, Wand2, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Linkify from "@/components/Linkify";
 import ScheduleSuggestion from "@/components/calendar/ScheduleSuggestion";
 import { getComposerUrl } from "@/lib/publishers/composers";
 import { CopilotWizard } from "@/components/wizard";
+import RepurposeWizard from "@/components/repurpose/RepurposeWizard";
 
 type Platform = {
   id: string;
@@ -70,6 +71,7 @@ function CopilotContent() {
   const [urlInput, setUrlInput] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [wizardMode, setWizardMode] = useState(false);
+  const [repurposeOpen, setRepurposeOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const searchParams = useSearchParams();
@@ -320,6 +322,10 @@ function CopilotContent() {
                       {publishing ? "..." : <><Send size={13} /> Publier</>}
                     </button>
                   </div>
+                  <button onClick={() => setRepurposeOpen(true)}
+                    className="w-full py-2 px-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition-colors">
+                    <RefreshCw size={13} /> Repurpose ce contenu
+                  </button>
                   {publishMsg && <p className="text-[11px] text-emerald-400 text-center">{publishMsg}</p>}
                   {scheduleMsg && <p className="text-[11px] text-primary text-center">{scheduleMsg}</p>}
                   {savedId && (
@@ -419,6 +425,21 @@ function CopilotContent() {
           </div>
         </div>
       </div>
+
+      <RepurposeWizard
+        isOpen={repurposeOpen}
+        onClose={() => setRepurposeOpen(false)}
+        sourceText={currentContent ?? ""}
+        sourceTitle={prompt}
+        onCreatePost={(platform, content) => {
+          setRepurposeOpen(false);
+          setActiveTab(platform);
+          setGenerated((prev) => ({
+            ...prev,
+            [platform]: { content, platform },
+          }));
+        }}
+      />
     </div>
   );
 }
