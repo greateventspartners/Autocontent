@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { CheckCircle, XCircle, MessageSquare, Link as LinkIcon, AlertCircle, Share2, Send, Clock, Sparkles } from "lucide-react";
 import ScheduleSuggestion from "@/components/calendar/ScheduleSuggestion";
 import { motion, AnimatePresence } from "framer-motion";
+import ClientPortalModal from "@/components/ClientPortalModal";
 
 type ApprovalPost = {
   id: string;
@@ -39,6 +40,7 @@ export default function ApprovalsPage() {
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const [scheduleLoading, setScheduleLoading] = useState<string | null>(null);
   const [scheduleDate, setScheduleDate] = useState<Record<string, string>>({});
+  const [portalOpen, setPortalOpen] = useState(false);
 
   const fetchPosts = (status: string) => {
     setLoading(true);
@@ -203,23 +205,15 @@ export default function ApprovalsPage() {
           <p className="text-muted-foreground mt-1">Validez les contenus avant publication ou générez un lien magique pour vos clients.</p>
         </div>
           <button
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(
-                  `${window.location.origin}/approvals`,
-                );
-                setClientCopied(true);
-                setTimeout(() => setClientCopied(false), 2500);
-              } catch {
-                setError("Copie impossible.");
-              }
-            }}
+            onClick={() => setPortalOpen(true)}
             className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm flex items-center gap-2 transition-colors"
           >
-            {clientCopied ? <CheckCircle size={16} className="text-emerald-400" /> : <LinkIcon size={16} />}
-            {clientCopied ? "Lien copié" : "Générer Lien Client"}
+            <LinkIcon size={16} />
+            Portail Client
           </button>
       </div>
+
+      <ClientPortalModal isOpen={portalOpen} onClose={() => setPortalOpen(false)} />
 
       {error && (
         <div className="flex items-center gap-2 p-3 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl">

@@ -48,6 +48,7 @@ model Workspace {
   documents           Document[]
   repurposeJobs       RepurposeJob[]
   competitors         Competitor[]
+  clientTokens        ClientToken[]
 }
 
 enum WorkspaceRole {
@@ -287,5 +288,20 @@ model Competitor {
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
+  @@index([workspaceId])
+}
+
+model ClientToken {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  token        String    @unique
+  clientName   String
+  clientEmail  String?
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([token])
   @@index([workspaceId])
 }
