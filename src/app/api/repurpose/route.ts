@@ -6,12 +6,26 @@ import { generateRepurpose } from "@/lib/gemini";
 const PLATFORM_SPECS: Record<string, string> = {
   twitter: "Tweet (280 caractères max). Impactant, concis, hashtags pertinents.",
   linkedin: "Post LinkedIn (1500 caractères max). Professionnel, storytelling, 3-5 paragraphs, emojis modérés.",
-  instagram: "Caption Instagram (2200 caractés max). Accrocheur, emojis, hashtags en fin de post.",
+  instagram: "Caption Instagram (2200 caractères max). Accrocheur, emojis, hashtags en fin de post.",
   threads: "Post Threads (500 caractères max). Conversationnel, direct, sans hashtags.",
   tiktok_script: "Script TikTok (60 secondes max). Hook fort, ton décontracté, CTA à la fin.",
   youtube_short: "Script YouTube Short (60 secondes max). Hook visuel, rythme rapide, CTA.",
   blog: "Article de blog (800-1500 mots). Intro accrocheuse, sous-titres H2/H3, conclusion avec CTA.",
   newsletter: "Email newsletter (400-600 mots). Personnalisé, storytelling, CTA clair.",
+};
+
+const TONE_INSTRUCTIONS: Record<string, string> = {
+  professionnel: "Adopte un ton professionnel, factuel et expert. Vocabulaire précis, phrases structurées.",
+  décontracté: "Adopte un ton décontracté, amical et accessible. Utilise le tutoiement, des phrases courtes.",
+  inspirant: "Adopte un ton inspirant et motivant. Utilise des métaphores, des appels à l'action émotionnels.",
+  humoristique: "Adopte un ton humoristique et léger. Utilise l'ironie, les jeux de mots, les références pop culture.",
+  éducatif: "Adopte un ton pédagogique et instructeur. Explique les concepts, utilise des exemples concrets.",
+};
+
+const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
+  français: "La langue de sortie doit être le français.",
+  anglais: "La langue de sortie doit être l'anglais (English).",
+  espagnol: "La langue de sortie doit être l'espagnol (Español).",
 };
 
 async function getUserWorkspaceId(userId: string) {
@@ -44,10 +58,13 @@ export async function POST(request: Request) {
   const workspaceId = await getUserWorkspaceId(session.userId);
   if (!workspaceId) return NextResponse.json({ error: "Workspace introuvable" }, { status: 404 });
 
-  const { sourceText, sourceTitle, platforms } = await request.json() as {
+  const { sourceText, sourceTitle, platforms, tone, language, templateId } = await request.json() as {
     sourceText?: string;
     sourceTitle?: string;
     platforms?: string[];
+    tone?: string;
+    language?: string;
+    templateId?: string;
   };
 
   if (!sourceText || !platforms?.length) {
@@ -61,6 +78,8 @@ export async function POST(request: Request) {
       sourceTitle: sourceTitle ?? null,
       targetPlatforms: platforms.join(","),
       status: "processing",
+      tone: tone ?? null,
+      templateId: templateId ?? null,
     },
   });
 
@@ -68,12 +87,22 @@ export async function POST(request: Request) {
     .map((p) => `[${p}] ${PLATFORM_SPECS[p] ?? "Post court et percutant."}`)
     .join("\n");
 
+  const toneInstruction = tone && TONE_INSTRUCTIONS[tone]
+    ? `\nTon demandé : ${TONE_INSTRUCTIONS[tone]}`
+    : "";
+
+  const languageInstruction = language && LANGUAGE_INSTRUCTIONS[language]
+    ? `\n${LANGUAGE_INSTRUCTIONS[language]}`
+    : "";
+
   const prompt = `Tu es un expert en création de contenu social media. Tu dois transformer le texte source ci-dessous en ${platforms.length} variantes adaptées à chaque plateforme.
 
 Pour chaque plateforme, génère :
 1. Le contenu adapté au format et au ton de la plateforme
 2. Un titre court
 3. Des hashtags pertinents
+${toneInstruction}
+${languageInstruction}
 
 Texte source :
 "${sourceText}"
