@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { TrendingUp, FileText, CheckCircle2, Clock, AlertCircle, ArrowUpRight, ArrowDownRight, Eye, Heart, MessageCircle, Share2, MousePointerClick } from "lucide-react";
+import { TrendingUp, FileText, CheckCircle2, Clock, AlertCircle, ArrowUpRight, ArrowDownRight, Eye, Heart, MessageCircle, Share2, Lightbulb, RefreshCw } from "lucide-react";
 import { motion, Variants } from "framer-motion";
 import {
   BarChart,
@@ -62,6 +62,14 @@ type DashboardData = {
     dailyData: ChartDaily[];
   };
   topPosts: TopPost[];
+};
+
+type Insight = {
+  id: string;
+  type: string;
+  platform: string | null;
+  title: string;
+  description: string;
 };
 
 const statusConfig: Record<string, { icon: typeof CheckCircle2; color: string; bg: string }> = {
@@ -130,6 +138,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [range, setRange] = useState<"7" | "30">("7");
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const [insightsLoading, setInsightsLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -141,6 +151,11 @@ export default function Dashboard() {
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
+
+    fetch("/api/analytics/insights")
+      .then((res) => res.json() as Promise<{ insights?: Insight[] }>)
+      .then((d) => setInsights(d.insights || []))
+      .catch(() => {});
   }, [range]);
 
   if (loading) {
@@ -525,6 +540,55 @@ export default function Dashboard() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </motion.div>
+      )}
+
+      {insights.length > 0 && (
+        <motion.div variants={itemVariants} className="glass-card rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <Lightbulb size={20} className="text-amber-400" />
+                Insights
+              </h3>
+              <p className="text-sm text-muted-foreground mt-0.5">Patterns détectés dans vos performances</p>
+            </div>
+            <button
+              onClick={async () => {
+                setInsightsLoading(true);
+                try {
+                  const res = await fetch("/api/analytics/insights", { method: "POST" });
+                  const d = await res.json() as { insights?: Insight[] };
+                  setInsights(d.insights || []);
+                } catch {}
+                setInsightsLoading(false);
+              }}
+              disabled={insightsLoading}
+              className="p-2 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50"
+              title="Régénérer les insights"
+            >
+              <RefreshCw size={16} className={`text-muted-foreground ${insightsLoading ? "animate-spin" : ""}`} />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {insights.map((insight) => (
+              <div
+                key={insight.id}
+                className="p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  {insight.platform && (
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${PLATFORM_BADGE[insight.platform] || "bg-white/5 text-muted-foreground border-white/10"}`}>
+                      {platformNames[insight.platform] || insight.platform}
+                    </span>
+                  )}
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{insight.type.replace(/_/g, " ")}</span>
+                </div>
+                <p className="font-medium text-sm mb-1">{insight.title}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">{insight.description}</p>
+              </div>
+            ))}
           </div>
         </motion.div>
       )}

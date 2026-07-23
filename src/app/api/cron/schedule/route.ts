@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { publishPost } from "@/lib/publishers";
 import { fetchMetrics, SUPPORTED_ANALYTICS_PLATFORMS } from "@/lib/analytics";
+import { generateInsights } from "@/lib/analytics/insights";
+import type { Prisma } from "@/generated/prisma/client";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -128,6 +130,30 @@ export async function GET(request: Request) {
         ok: false,
         error: error instanceof Error ? error.message : "Erreur inconnue",
       });
+    }
+  }
+
+  if (results.length > 0) {
+    const workspaceIds = [...new Set(posts.map((p) => p.content.campaign.workspaceId))];
+    for (const wsId of workspaceIds) {
+      try {
+        const insights = await generateInsights(wsId);
+        if (insights.length > 0) {
+          await prisma.contentInsight.deleteMany({ where: { workspaceId: wsId } });
+          await prisma.contentInsight.createMany({
+            data: insights.map((i) => ({
+              workspaceId: wsId,
+              type: i.type,
+              platform: i.platform,
+              title: i.title,
+              description: i.description,
+              data: i.data as Prisma.InputJsonValue,
+            })),
+          });
+        }
+      } catch {
+        // insights generation failure is non-blocking
+      }
     }
   }
 

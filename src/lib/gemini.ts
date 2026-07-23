@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI, type GenerateContentRequest } from "@google/generative-ai";
+import { getInsightsForPrompt } from "@/lib/analytics/insights";
 
 const FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
 const MAX_RETRIES = 2;
@@ -157,6 +158,7 @@ export async function generateContent(
     voiceSamples?: string[] | null;
   },
   image?: ImageInput,
+  workspaceId?: string,
 ) {
   const config = platformConfigs[platform];
   if (!config) {
@@ -183,6 +185,17 @@ export async function generateContent(
 
   if (image) {
     systemInstruction += `\n\nUne image a été fournie avec cette demande. Analyse-la et intègre-la dans ta réponse si elle est pertinente. Si l'image contient du texte, des produits, un paysage ou un sujet identifiable, décris-la brièvement et utilise cette information pour enrichir le contenu généré.`;
+  }
+
+  if (workspaceId) {
+    try {
+      const insightsPrompt = await getInsightsForPrompt(workspaceId);
+      if (insightsPrompt) {
+        systemInstruction += insightsPrompt;
+      }
+    } catch {
+      // insights fetch failure is non-blocking
+    }
   }
 
   const genAI = getGenAI();

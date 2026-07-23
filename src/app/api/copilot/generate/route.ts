@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     }
 
     const brandKit = await getBrandKit(workspaceId);
-    const result = await generateContent(prompt, normalized, brandKit ?? undefined, image);
+    const result = await generateContent(prompt, normalized, brandKit ?? undefined, image, workspaceId);
 
     const campaign = await getOrCreateDefaultCampaign(workspaceId);
 

@@ -44,6 +44,7 @@ model Workspace {
   campaigns           Campaign[]
   invitations         Invitation[]
   platformConnections PlatformConnection[]
+  insights            ContentInsight[]
 }
 
 enum WorkspaceRole {
@@ -208,4 +209,20 @@ model PlatformConnection {
 
   @@unique([workspaceId, platform])
   @@index([platform])
+}
+
+model ContentInsight {
+  id          String   @id @default(cuid())
+  workspaceId String
+  type        String
+  platform    String?
+  title       String
+  description String
+  data        Json?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([type])
 }
