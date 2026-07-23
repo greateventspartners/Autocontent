@@ -1,23 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { hashPassword, createSession } from "@/lib/auth";
+import { registerSchema, validateBody } from "@/lib/validation";
 
 export async function POST(request: Request) {
   try {
-    const { name, email, password }: { name?: string; email?: string; password?: string } = await request.json();
+    const body = await request.json();
+    const validation = validateBody(registerSchema, body);
+    if (!validation.success) return validation.error;
 
-    if (!email || !password) {
-      return Response.json(
-        { error: "Email et mot de passe requis" },
-        { status: 400 }
-      );
-    }
-
-    if (password.length < 8) {
-      return Response.json(
-        { error: "Le mot de passe doit contenir au moins 8 caractères" },
-        { status: 400 }
-      );
-    }
+    const { name, email, password } = validation.data;
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {

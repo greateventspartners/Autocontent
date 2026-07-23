@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { motion } from "framer-motion";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Eye } from "lucide-react";
+import Link from "next/link";
 import ControlsBar from "@/components/calendar/ControlsBar";
 import MonthView from "@/components/calendar/MonthView";
 import WeekView from "@/components/calendar/WeekView";
@@ -211,7 +212,14 @@ export default function CalendarPage() {
         />
 
         {/* Bulk scheduler button */}
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <Link
+            href="/preview"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm font-medium hover:bg-white/[0.06] transition-colors text-muted-foreground hover:text-foreground"
+          >
+            <Eye size={16} />
+            Aperçu multi-plateforme
+          </Link>
           <button
             onClick={() => setShowBulkScheduler(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm font-medium hover:bg-white/[0.06] transition-colors text-muted-foreground hover:text-foreground"

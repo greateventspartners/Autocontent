@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Bot, CalendarDays, Palette, CheckCircle, Settings, Plus, PenLine, Lightbulb, FolderOpen, Zap, FileText, BarChart3, Users, FileBarChart } from "lucide-react";
+import { LayoutDashboard, Bot, CalendarDays, Palette, CheckCircle, Settings, Plus, PenLine, Lightbulb, FolderOpen, Zap, FileText, BarChart3, Users, FileBarChart, Eye } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useUser } from "@/lib/useUser";
@@ -25,6 +25,7 @@ const navItems = [
   { name: "Campagnes", href: "/campaigns", icon: FolderOpen },
   { name: "Concurrents", href: "/competitors", icon: Users },
   { name: "Rapports", href: "/reports", icon: FileBarChart },
+  { name: "Aperçu", href: "/preview", icon: Eye },
 ];
 
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {

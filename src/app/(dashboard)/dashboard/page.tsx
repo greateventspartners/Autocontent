@@ -15,6 +15,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import Linkify from "@/components/Linkify";
 
 type Activity = {
   id: string;
@@ -410,7 +411,7 @@ export default function Dashboard() {
                       <Icon size={16} className={activity.color} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{activity.title}</p>
+                      <p className="text-sm font-medium truncate"><Linkify>{activity.title}</Linkify></p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${PLATFORM_BADGE[activity.platform] || "bg-white/5 text-muted-foreground border-white/10"}`}>
                           {activity.platformLabel}
@@ -524,7 +525,7 @@ export default function Dashboard() {
                   <tr key={post.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
                     <td className="py-3 px-4">
                       <p className="font-medium truncate max-w-[240px]">{post.title}</p>
-                      <p className="text-muted-foreground text-xs truncate max-w-[240px] mt-0.5">{post.body}</p>
+                      <p className="text-muted-foreground text-xs truncate max-w-[240px] mt-0.5"><Linkify>{post.body}</Linkify></p>
                     </td>
                     <td className="py-3 px-4">
                       <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${PLATFORM_BADGE[post.platform] || "bg-white/5 text-muted-foreground border-white/10"}`}>

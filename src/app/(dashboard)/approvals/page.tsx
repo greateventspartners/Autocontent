@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { CheckCircle, XCircle, MessageSquare, Link as LinkIcon, AlertCircle, Share2, Send, Clock, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle, XCircle, MessageSquare, Link as LinkIcon, AlertCircle, Share2, Send, Clock, Sparkles, Eye } from "lucide-react";
 import ScheduleSuggestion from "@/components/calendar/ScheduleSuggestion";
 import { motion, AnimatePresence } from "framer-motion";
 import ClientPortalModal from "@/components/ClientPortalModal";
+import Linkify from "@/components/Linkify";
 
 type ApprovalPost = {
   id: string;
@@ -211,6 +213,13 @@ export default function ApprovalsPage() {
             <LinkIcon size={16} />
             Portail Client
           </button>
+          <Link
+            href="/preview"
+            className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm flex items-center gap-2 transition-colors"
+          >
+            <Eye size={16} />
+            Aperçu
+          </Link>
       </div>
 
       <ClientPortalModal isOpen={portalOpen} onClose={() => setPortalOpen(false)} />
@@ -295,7 +304,7 @@ export default function ApprovalsPage() {
                         <p className="text-xs text-gray-500">{post.campaignTitle || "Campagne"}</p>
                       </div>
                     </div>
-                    <p className="whitespace-pre-wrap text-sm mb-3">{post.body || "Aucun contenu généré."}</p>
+                    <p className="whitespace-pre-wrap text-sm mb-3"><Linkify>{post.body || "Aucun contenu généré."}</Linkify></p>
                   </div>
                 </div>
 

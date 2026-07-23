@@ -2,6 +2,7 @@ import { Platform } from "@/generated/prisma/client";
 import { generateContent, type ImageInput } from "@/lib/gemini";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { copilotGenerateSchema, validateBody } from "@/lib/validation";
 
 async function getUserWorkspaceId(userId: string) {
   const membership = await prisma.workspaceMember.findFirst({
@@ -43,8 +44,6 @@ async function getBrandKit(workspaceId: string) {
   };
 }
 
-const validPlatforms = ["linkedin", "twitter", "instagram", "facebook", "tiktok", "pinterest", "wordpress", "medium"];
-
 export async function POST(request: Request) {
   const session = await getSession(request);
   if (!session) {
@@ -57,29 +56,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { prompt, platform, image }: { prompt?: string; platform?: string; image?: ImageInput } = await request.json();
+    const body = await request.json();
+    const validation = validateBody(copilotGenerateSchema, body);
+    if (!validation.success) return validation.error;
 
-    if (!prompt || !platform) {
-      return Response.json(
-        { error: "prompt et platform sont requis" },
-        { status: 400 },
-      );
-    }
-
-    if (image && (!image.data || !image.mimeType)) {
-      return Response.json(
-        { error: "image doit contenir data (base64) et mimeType" },
-        { status: 400 },
-      );
-    }
-
+    const { prompt, platform, image } = validation.data;
     const normalized = platform.toLowerCase();
-    if (!validPlatforms.includes(normalized)) {
-      return Response.json(
-        { error: `Plateforme non supportée. Choisir: ${validPlatforms.join(", ")}` },
-        { status: 400 },
-      );
-    }
 
     const brandKit = await getBrandKit(workspaceId);
     const result = await generateContent(prompt, normalized, brandKit ?? undefined, image, workspaceId);
