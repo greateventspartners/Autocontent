@@ -89,7 +89,9 @@ export default function OnboardingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
       });
-      const data = (await res.json()) as {
+      const text = await res.text();
+      if (!text) throw new Error("Réponse serveur vide");
+      const data = JSON.parse(text) as {
         error?: string;
         analysis?: {
           colors?: { hex: string; name: string }[];
@@ -120,12 +122,18 @@ export default function OnboardingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const data = (await res.json()) as {
-        error?: string;
-        bios?: Record<string, string[]>;
-      };
-      if (!res.ok) throw new Error(data.error || "Génération impossible");
-      setBios(data.bios ?? {});
+      if (!res.ok) {
+        const text = await res.text();
+        if (!text) throw new Error("Réponse serveur vide");
+        const data = JSON.parse(text) as { error?: string; bios?: Record<string, string[]> };
+        if (data.bios) { setBios(data.bios); return; }
+        throw new Error(data.error || "Génération impossible");
+      }
+      const text = await res.text();
+      if (!text) { setBios({}); return; }
+      const data = JSON.parse(text) as { error?: string; bios?: Record<string, string[]> };
+      if (data.bios) setBios(data.bios);
+      else setBios({});
     } catch (e) {
       setBioError(e instanceof Error ? e.message : "Erreur");
     } finally {
@@ -151,9 +159,13 @@ export default function OnboardingPage() {
           platforms: selectedPlatforms,
         }),
       });
+      const text = await res.text();
       if (!res.ok) {
-        const data = (await res.json()) as { error?: string };
-        throw new Error(data.error || "Erreur lors de la sauvegarde");
+        let msg = "Erreur lors de la sauvegarde";
+        if (text) {
+          try { const d = JSON.parse(text); msg = d.error || msg; } catch { /* keep default */ }
+        }
+        throw new Error(msg);
       }
       window.location.href = "/dashboard";
     } catch (e) {

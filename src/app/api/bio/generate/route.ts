@@ -62,9 +62,12 @@ ${platformBlock}`;
       system,
       { responseMimeType: "application/json" },
     );
+    if (!text || !text.trim()) {
+      return Response.json({ bios: {} });
+    }
     const parsed = JSON.parse(text) as { bios?: Record<string, string[]> };
     return Response.json({ bios: parsed.bios ?? {} });
   } catch {
-    return Response.json({ error: "Génération de bios impossible" }, { status: 500 });
+    return Response.json({ bios: {} });
   }
 }

@@ -74,8 +74,10 @@ ${platformBlock}`;
         system,
         { responseMimeType: "application/json" },
       );
-      const parsed = JSON.parse(text) as { bios?: Record<string, string[]> };
-      bios = parsed.bios ?? {};
+      if (text && text.trim()) {
+        const parsed = JSON.parse(text) as { bios?: Record<string, string[]> };
+        bios = parsed.bios ?? {};
+      }
     } catch {
       /* La génération de bios n'est pas bloquante */
     }

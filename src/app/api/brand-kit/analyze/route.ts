@@ -70,6 +70,9 @@ ${html.slice(0, 20000)}`;
       undefined,
       { responseMimeType: "application/json" },
     );
+    if (!text || !text.trim()) {
+      return Response.json({ error: "L'IA n'a pas retourné de résultat" }, { status: 500 });
+    }
     const analysis = JSON.parse(text) as {
       colors?: { hex: string; name: string }[];
       toneOfVoice?: string;
