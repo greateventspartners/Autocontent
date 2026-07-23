@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { motion } from "framer-motion";
+import { ClipboardList } from "lucide-react";
 import ControlsBar from "@/components/calendar/ControlsBar";
 import MonthView from "@/components/calendar/MonthView";
 import WeekView from "@/components/calendar/WeekView";
@@ -10,6 +11,7 @@ import ListView from "@/components/calendar/ListView";
 import UnplannedPane from "@/components/calendar/UnplannedPane";
 import PostCard from "@/components/calendar/PostCard";
 import PostPreviewModal from "@/components/calendar/PostPreviewModal";
+import BulkScheduler from "@/components/calendar/BulkScheduler";
 import type { CalendarPost, DayData, ViewMode, CampaignOption } from "@/components/calendar/types";
 
 export default function CalendarPage() {
@@ -24,12 +26,12 @@ export default function CalendarPage() {
   const [campaigns, setCampaigns] = useState<CampaignOption[]>([]);
   const [previewPost, setPreviewPost] = useState<CalendarPost | null>(null);
   const [activeDragPost, setActiveDragPost] = useState<CalendarPost | null>(null);
+  const [showBulkScheduler, setShowBulkScheduler] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  // Fetch scheduled posts
   const fetchScheduled = useCallback(() => {
     const params = new URLSearchParams({ calendar: "true" });
     if (filterPlatform) params.set("platform", filterPlatform);
@@ -42,7 +44,6 @@ export default function CalendarPage() {
       .then((data) => setScheduledPosts(data.posts));
   }, [filterPlatform, filterCampaign]);
 
-  // Fetch draft posts (unplanned)
   const fetchDrafts = useCallback(() => {
     const params = new URLSearchParams({ status: "DRAFT" });
     if (filterPlatform) params.set("platform", filterPlatform);
@@ -65,7 +66,6 @@ export default function CalendarPage() {
       .catch(() => {});
   }, []);
 
-  // Build calendar days for month/week views
   const buildDays = (): DayData[] => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -112,7 +112,6 @@ export default function CalendarPage() {
 
   const days = buildDays();
 
-  // Handle drag end
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveDragPost(null);
@@ -122,7 +121,6 @@ export default function CalendarPage() {
     const postId = String(active.id);
     const overId = String(over.id);
 
-    // Extract target date from drop zone id (format: "day-2026-07-25")
     const dateMatch = overId.match(/^day-(\d{4}-\d{2}-\d{2})$/);
     if (!dateMatch) return;
 
@@ -130,7 +128,6 @@ export default function CalendarPage() {
     const post = scheduledPosts.find((p) => p.id === postId) || draftPosts.find((p) => p.id === postId);
     if (!post) return;
 
-    // Keep existing time or default to 09:00
     let time = "09:00";
     if (post.scheduledAt) {
       const t = post.scheduledAt.split("T")[1];
@@ -151,7 +148,6 @@ export default function CalendarPage() {
       });
 
       if (res.ok) {
-        // Refresh data
         await Promise.all([fetchScheduled(), fetchDrafts()]);
       }
     } catch (err) {
@@ -162,6 +158,10 @@ export default function CalendarPage() {
   const handlePostDeleted = (postId: string) => {
     setScheduledPosts((prev) => prev.filter((p) => p.id !== postId));
     setDraftPosts((prev) => prev.filter((p) => p.id !== postId));
+  };
+
+  const handleBulkCreated = () => {
+    Promise.all([fetchScheduled(), fetchDrafts()]);
   };
 
   if (loading) {
@@ -210,6 +210,17 @@ export default function CalendarPage() {
           draftCount={draftPosts.length}
         />
 
+        {/* Bulk scheduler button */}
+        <div className="flex justify-end">
+          <button
+            onClick={() => setShowBulkScheduler(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm font-medium hover:bg-white/[0.06] transition-colors text-muted-foreground hover:text-foreground"
+          >
+            <ClipboardList size={16} />
+            Planification en masse
+          </button>
+        </div>
+
         {viewMode === "month" && (
           <MonthView days={days} onPostClick={setPreviewPost} />
         )}
@@ -233,6 +244,12 @@ export default function CalendarPage() {
             onDeleted={handlePostDeleted}
           />
         )}
+
+        <BulkScheduler
+          open={showBulkScheduler}
+          onClose={() => setShowBulkScheduler(false)}
+          onCreated={handleBulkCreated}
+        />
       </div>
 
       <DragOverlay>

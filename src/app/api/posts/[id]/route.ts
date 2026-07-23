@@ -35,7 +35,7 @@ export async function PATCH(
   if (denied) return Response.json({ error: denied.error }, { status: denied.status });
 
   try {
-    const { status, body, scheduledAt, firstComment }: Record<string, unknown> = await request.json();
+    const { status, body, scheduledAt, firstComment, recurrence }: Record<string, unknown> = await request.json();
 
     const data: Record<string, unknown> = {};
     if (status !== undefined) {
@@ -49,6 +49,13 @@ export async function PATCH(
     if (body !== undefined) data.body = body;
     if (scheduledAt !== undefined) data.scheduledAt = scheduledAt ? new Date(String(scheduledAt)) : null;
     if (firstComment !== undefined) data.firstComment = firstComment;
+    if (recurrence !== undefined) {
+      const validRecurrences = ["NONE", "DAILY", "WEEKLY", "MONTHLY"];
+      if (!validRecurrences.includes(String(recurrence))) {
+        return Response.json({ error: "Récurrence invalide" }, { status: 400 });
+      }
+      data.recurrence = recurrence;
+    }
 
     const post = await prisma.post.update({
       where: { id },
