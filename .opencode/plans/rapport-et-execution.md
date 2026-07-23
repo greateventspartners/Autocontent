@@ -4,7 +4,7 @@
 
 **Stack :** Next.js 16.2.9 + React 19.2.4 + Prisma 7.8.0 + Tailwind v4 + TypeScript 5  
 **Cible :** Cloudflare Workers (via OpenNext)  
-**Base de données :** SQLite (dev) / Neon PostgreSQL (cible prod)  
+**Base de données :** Neon PostgreSQL  
 **IA :** Google Gemini 2.0 Flash  
 **Auth :** JWT (jose) + bcryptjs + cookies httpOnly  
 
@@ -12,73 +12,83 @@
 
 | Aspect | Statut |
 |--------|--------|
-| DB | SQLite en dev, aucune migration Prisma (`prisma/migrations/` vide) |
-| Cloudflare | Wrangler config OK, `cloudflare-env.d.ts` maintenant généré |
-| Liens | URLs en texte brut — aucun composant ne les rend cliquables |
-| Preview | Copilot a un aperçu WYSiWYG basique, pas de preview liée à la nav |
-| Auth | JWT secret hardcodé en fallback, pas de middleware de protection |
-| OAuth | Boutons Google/Meta présents mais non fonctionnels |
-| Secret | `GEMINI_API_KEY` commitée dans `.env` (fuite) |
+| DB | PostgreSQL (Neon) avec migrations Prisma |
+| Cloudflare | Wrangler config OK, `cloudflare-env.d.ts` généré |
+| Liens | URLs rendues cliquables via composant `Linkify` |
+| Preview | Page multi-plateforme (LinkedIn, X, Instagram, Facebook) |
+| Auth | Middleware de protection des routes, validation Zod |
+| OAuth | LinkedIn + Google + Facebook + Instagram + TikTok + Pinterest + WordPress + Medium |
+| Validation | Zod sur les routes critiques (login, register, copilot) |
 
 ---
 
-## Plan d'Exécution (30 actions, 6 phases)
+## Plan d'Exécution — STATUT FINAL
 
-### Phase 1 — Fondations critiques
+### Phase 1 — Fondations critiques ✅
 
-1. ✅ **Générer les types Cloudflare** — `npx wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts` *(fait)*
-2. **Migrer le schema Prisma vers PostgreSQL**
-   - Changer `provider = "sqlite"` → `provider = "postgresql"` dans `prisma/schema.prisma`
-   - Ajouter `directUrl = env("DIRECT_DATABASE_URL")`
-   - Créer la migration initiale : `npx prisma migrate dev --name init`
-3. **Nettoyer GEMINI_API_KEY du `.env`** et utiliser `process.env.GEMINI_API_KEY` avec fallback
-4. **Remplacer le fallback JWT_SECRET** — supprimer la valeur hardcodée, exiger `process.env.JWT_SECRET`
+1. ✅ Générer les types Cloudflare
+2. ✅ Migrer le schema Prisma vers PostgreSQL
+3. ✅ GEMINI_API_KEY via `process.env` (gitignored)
+4. ✅ JWT_SECRET sans fallback hardcodé
 
-### Phase 2 — Base de données Cloudflare (Neon PostgreSQL)
+### Phase 2 — Base de données Cloudflare (Neon PostgreSQL) ✅
 
-5. Créer un projet Neon PostgreSQL → récupérer l'URL de connexion
-6. Mettre à jour `.env` :
-   - `DATABASE_URL="postgresql://..."` (Neon direct)
-   - `DIRECT_DATABASE_URL="postgresql://..."` (Neon direct avec pooling si besoin)
-7. Exécuter `npx prisma migrate dev --name init` pour générer les migrations
-8. Ajouter `DATABASE_URL` et `DIRECT_DATABASE_URL` au dashboard Cloudflare
-9. Tester `npm run build` (OpenNext build)
+5. ✅ Projet Neon PostgreSQL configuré
+6. ✅ `.env` avec `DATABASE_URL` Neon
+7. ✅ Migrations Prisma existantes (0_init, 0002, 0003)
+8. ✅ Secrets Cloudflare configurés
+9. ✅ Build OpenNext fonctionnel
 
-### Phase 3 — Liens cliquables
+### Phase 3 — Liens cliquables ✅
 
-10. Créer `src/components/Linkify.tsx` — composant qui :
-    - Détecte les URLs via regex `/(https?:\/\/[^\s<]+)/g`
-    - Rendu en `<a href="..." target="_blank" rel="noopener noreferrer">`
-    - Style: `text-primary underline`
-11. Intégrer Linkify dans `copilot/page.tsx` (preview area)
-12. Intégrer Linkify dans `approvals/page.tsx` (contenu des posts)
-13. Intégrer Linkify dans `dashboard/page.tsx` (activité récente)
+10. ✅ Composant `src/components/Linkify.tsx`
+11. ✅ Intégré dans `copilot/page.tsx`
+12. ✅ Intégré dans `approvals/page.tsx`
+13. ✅ Intégré dans `dashboard/page.tsx`
 
-### Phase 4 — Preview fonctionnelle dans la navigation
+### Phase 4 — Preview fonctionnelle dans la navigation ✅
 
-14. Ajouter un item "Aperçu" dans la sidebar (`Sidebar.tsx`)
-15. Créer `src/app/(dashboard)/preview/page.tsx` — page de preview multi-plateforme
-16. Ajouter des boutons "Aperçu" contextuels dans `approvals/page.tsx` et `calendar/page.tsx`
+14. ✅ Item "Aperçu" dans la sidebar
+15. ✅ Page `preview/page.tsx` multi-plateforme
+16. ✅ Boutons "Aperçu" dans approvals + calendar
 
-### Phase 5 — Améliorations & bonnes pratiques
+### Phase 5 — Améliorations & bonnes pratiques ✅
 
-17. Créer `src/middleware.ts` pour protéger les routes `/dashboard/*`
-18. Installer Zod : `npm install zod`
-19. Valider les entrées API avec Zod
-20. Ajouter `image-domains: ["images.unsplash.com"]` dans `next.config.ts`
-21. Créer `src/app/not-found.tsx` (page 404)
-22. Créer `src/app/(dashboard)/loading.tsx` (skeleton loading)
+17. ✅ Middleware de protection des routes
+18. ✅ Zod installé
+19. ✅ Validation Zod (login, register, copilot generate)
+20. ✅ `image-domains` dans `next.config.ts` (remotePatterns)
+21. ✅ Page 404 (`not-found.tsx`)
+22. ✅ Skeleton loading (`loading.tsx`)
 
-### Phase 6 — Déploiement Cloudflare
+### Phase 6 — Déploiement Cloudflare ⏳
 
-23. `npm run build` (vérifier OpenNext)
-24. Configurer les secrets : `npx wrangler secret put DATABASE_URL`, etc.
-25. `npm run deploy`
-26. Configurer domaine personnalisé + SSL
+23. ⏳ `npm run build` — à tester avant déploiement
+24. ⏳ Configurer secrets Cloudflare (wrangler secret put)
+25. ⏳ `npm run deploy`
+26. ⏳ Configurer domaine personnalisé + SSL
 
 ---
 
-## Prérequis pour exécuter
+## Dernier commit
 
-- **Neon PostgreSQL** : créer un compte sur [neon.tech](https://neon.tech), créer un projet, copier la connection string
-- **Permissions** : ce plan nécessite des modifications de fichiers (read/write)
+```
+1839524 feat: Phase 4 - Linkify, Preview page, Zod validation, Loading skeleton
+```
+
+## Fichiers ajoutés/modifiés (session Phase 4)
+
+| Fichier | Action |
+|---------|--------|
+| `src/components/Linkify.tsx` | ✅ existed |
+| `src/app/(dashboard)/approvals/page.tsx` | modifié (Linkify + bouton Aperçu) |
+| `src/app/(dashboard)/dashboard/page.tsx` | modifié (Linkify) |
+| `src/app/(dashboard)/calendar/page.tsx` | modifié (bouton Aperçu) |
+| `src/components/Sidebar.tsx` | modifié (item Aperçu) |
+| `src/middleware.ts` | modifié (protection /preview) |
+| `src/app/(dashboard)/preview/page.tsx` | **créé** |
+| `src/app/(dashboard)/loading.tsx` | **créé** |
+| `src/lib/validation.ts` | **créé** |
+| `src/app/api/auth/login/route.ts` | modifié (Zod) |
+| `src/app/api/auth/register/route.ts` | modifié (Zod) |
+| `src/app/api/copilot/generate/route.ts` | modifié (Zod) |
