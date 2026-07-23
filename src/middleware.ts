@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 const COOKIE_NAME = "session";
 
-const protectedPaths = ["/dashboard", "/copilot", "/calendar", "/brand-kit", "/approvals", "/bio", "/ideas", "/settings", "/documents"];
+const protectedPaths = ["/dashboard", "/copilot", "/calendar", "/brand-kit", "/approvals", "/bio", "/ideas", "/settings", "/documents", "/analytics"];
 const authPaths = ["/", "/register", "/forgot-password"];
 
 export function middleware(request: NextRequest) {
