@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Palette, Search, Upload, Plus, Check, Wand2, AlertCircle, Save, Trash2, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
+import { BrandKitWizard } from "@/components/wizard";
 
 type Color = { hex: string; name: string };
 
@@ -54,6 +55,7 @@ export default function BrandKitPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [wizardMode, setWizardMode] = useState(false);
 
   useEffect(() => {
     fetch("/api/brand-kit")
@@ -184,20 +186,64 @@ export default function BrandKitPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12">
+      {wizardMode && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto glass-card rounded-2xl p-6">
+            <BrandKitWizard
+              onComplete={async (data) => {
+                setWizardMode(false);
+                const toneLabel = TONE_OPTIONS.find((t) => t.id === data.tone)?.label || "Friendly & Accessible";
+                setSelectedTone(data.tone);
+                setColors(data.colors);
+                setInstructions(data.doAndDonts);
+                setKeywords(data.keywords);
+                setUrl(data.websiteUrl || "");
+                // Auto-save
+                try {
+                  await fetch("/api/brand-kit", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      name: data.brandName,
+                      colors: data.colors,
+                      toneOfVoice: toneLabel,
+                      doAndDonts: data.doAndDonts,
+                      fonts: { keywords: data.keywords },
+                    }),
+                  });
+                  setSaved(true);
+                  setTimeout(() => setSaved(false), 2500);
+                } catch { /* noop */ }
+              }}
+              onSkip={() => setWizardMode(false)}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Brand Kit</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Identité visuelle et ton de voix de votre marque.</p>
         </div>
-        <button onClick={handleSave} disabled={saving}
-          className="px-5 py-2.5 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white rounded-xl shadow-lg shadow-primary/20 font-medium text-sm flex items-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60">
-          {saving ? (
-            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-              className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
-          ) : saved ? <Check size={16} /> : <Save size={16} />}
-          {saved ? "Enregistré !" : saving ? "Sauvegarde..." : "Enregistrer"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setWizardMode(true)}
+            className="px-4 py-2.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors"
+          >
+            <Wand2 size={16} />
+            Wizard
+          </button>
+          <button onClick={handleSave} disabled={saving}
+            className="px-5 py-2.5 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white rounded-xl shadow-lg shadow-primary/20 font-medium text-sm flex items-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60">
+            {saving ? (
+              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
+            ) : saved ? <Check size={16} /> : <Save size={16} />}
+            {saved ? "Enregistré !" : saving ? "Sauvegarde..." : "Enregistrer"}
+          </button>
+        </div>
       </div>
 
       {error && (

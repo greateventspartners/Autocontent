@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { FolderOpen, Plus, Pencil, Trash2, X, AlertCircle, FileText, Loader2, Calendar } from "lucide-react";
+import { FolderOpen, Plus, Pencil, Trash2, X, AlertCircle, FileText, Loader2, Calendar, Wand2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { CampaignWizard } from "@/components/wizard";
 
 type Campaign = {
   id: string;
@@ -37,6 +38,7 @@ export default function CampaignsPage() {
   const [formColor, setFormColor] = useState(PRESET_COLORS[0]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [wizardMode, setWizardMode] = useState(false);
 
   const fetchCampaigns = useCallback(async () => {
     try {
@@ -134,6 +136,30 @@ export default function CampaignsPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-12">
+      {wizardMode && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto glass-card rounded-2xl p-6">
+            <CampaignWizard
+              onComplete={async (data) => {
+                setWizardMode(false);
+                try {
+                  const res = await fetch("/api/campaigns", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data),
+                  });
+                  const result = (await res.json()) as { campaign?: Campaign };
+                  if (result.campaign) {
+                    setCampaigns((prev) => [result.campaign!, ...prev]);
+                  }
+                } catch { /* noop */ }
+              }}
+              onSkip={() => setWizardMode(false)}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -142,13 +168,22 @@ export default function CampaignsPage() {
           </h2>
           <p className="text-muted-foreground mt-1">Organisez vos contenus par campagne et suivez leur progression.</p>
         </div>
-        <button
-          onClick={openCreate}
-          className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/25 font-medium text-sm flex items-center gap-2 transition-transform active:scale-95"
-        >
-          <Plus size={16} />
-          Nouvelle campagne
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setWizardMode(true)}
+            className="px-4 py-2.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors"
+          >
+            <Wand2 size={16} />
+            Wizard
+          </button>
+          <button
+            onClick={openCreate}
+            className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/25 font-medium text-sm flex items-center gap-2 transition-transform active:scale-95"
+          >
+            <Plus size={16} />
+            Nouvelle campagne
+          </button>
+        </div>
       </div>
 
       {error && (

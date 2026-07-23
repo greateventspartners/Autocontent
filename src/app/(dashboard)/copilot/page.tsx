@@ -2,11 +2,12 @@
 
 import React, { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { Sparkles, Image as ImageIcon, Link as LinkIcon, Send, Share2, MessageCircle, Camera, ThumbsUp, Music, Grid3x3, Globe, BookOpen, AlertCircle, Copy, ExternalLink, Zap } from "lucide-react";
+import { Sparkles, Image as ImageIcon, Link as LinkIcon, Send, Share2, MessageCircle, Camera, ThumbsUp, Music, Grid3x3, Globe, BookOpen, AlertCircle, Copy, ExternalLink, Zap, Wand2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Linkify from "@/components/Linkify";
 import ScheduleSuggestion from "@/components/calendar/ScheduleSuggestion";
 import { getComposerUrl } from "@/lib/publishers/composers";
+import { CopilotWizard } from "@/components/wizard";
 
 type Platform = {
   id: string;
@@ -68,6 +69,7 @@ function CopilotContent() {
   const [urlOpen, setUrlOpen] = useState(false);
   const [urlInput, setUrlInput] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [wizardMode, setWizardMode] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const searchParams = useSearchParams();
@@ -182,22 +184,47 @@ function CopilotContent() {
   return (
     <div className="h-[calc(100vh-7rem)] flex flex-col gap-4">
 
-      {/* Platform Tabs */}
-      <div className="flex items-center gap-1.5 p-1 bg-white/[0.02] rounded-2xl border border-white/[0.04] overflow-x-auto scrollbar-hide">
-        {platforms.map((p) => {
-          const active = activeTab === p.id;
-          return (
-            <button key={p.id} onClick={() => setActiveTab(p.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
-                active
-                  ? `${p.bg} ${p.color} ring-1 ${p.ring}`
-                  : "text-muted-foreground hover:bg-white/[0.03] hover:text-foreground"
-              }`}>
-              <p.icon size={15} />
-              <span className="hidden sm:inline">{p.label}</span>
-            </button>
-          );
-        })}
+      {wizardMode && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto glass-card rounded-2xl p-6">
+            <CopilotWizard
+              onComplete={(data) => {
+                setWizardMode(false);
+                setActiveTab(data.platform);
+                setPrompt(data.prompt);
+                if (data.postId) setSavedId(data.postId);
+              }}
+              onSkip={() => setWizardMode(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Platform Tabs + Wizard Toggle */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 flex items-center gap-1.5 p-1 bg-white/[0.02] rounded-2xl border border-white/[0.04] overflow-x-auto scrollbar-hide">
+          {platforms.map((p) => {
+            const active = activeTab === p.id;
+            return (
+              <button key={p.id} onClick={() => setActiveTab(p.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
+                  active
+                    ? `${p.bg} ${p.color} ring-1 ${p.ring}`
+                    : "text-muted-foreground hover:bg-white/[0.03] hover:text-foreground"
+                }`}>
+                <p.icon size={15} />
+                <span className="hidden sm:inline">{p.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <button
+          onClick={() => setWizardMode(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl text-sm font-medium transition-colors shrink-0"
+        >
+          <Wand2 size={16} />
+          <span className="hidden sm:inline">Mode guidé</span>
+        </button>
       </div>
 
       <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0">
