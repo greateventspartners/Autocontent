@@ -45,6 +45,7 @@ model Workspace {
   invitations         Invitation[]
   platformConnections PlatformConnection[]
   insights            ContentInsight[]
+  documents           Document[]
 }
 
 enum WorkspaceRole {
@@ -94,6 +95,21 @@ model Campaign {
 
   workspace Workspace @relation(fields: [workspaceId], references: [id])
   contents  Content[]
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  workspaceId String
+  title       String
+  content     Json?
+  wordCount   Int      @default(0)
+  tags        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
 }
 
 model Content {

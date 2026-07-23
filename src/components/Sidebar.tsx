@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Bot, CalendarDays, Palette, CheckCircle, Settings, Plus, PenLine, Lightbulb, FolderOpen, Zap } from "lucide-react";
+import { LayoutDashboard, Bot, CalendarDays, Palette, CheckCircle, Settings, Plus, PenLine, Lightbulb, FolderOpen, Zap, FileText } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useUser } from "@/lib/useUser";
@@ -15,6 +15,7 @@ function cn(...inputs: ClassValue[]) {
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Copilot IA", href: "/copilot", icon: Bot },
+  { name: "Documents", href: "/documents", icon: FileText },
   { name: "Calendrier", href: "/calendar", icon: CalendarDays },
   { name: "Brand Kit", href: "/brand-kit", icon: Palette },
   { name: "Bio & Profils", href: "/bio", icon: PenLine },
